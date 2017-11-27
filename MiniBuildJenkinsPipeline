@@ -16,7 +16,7 @@ def unittestOutFile  = 'xunit.out.xml'
 pipeline { 
   agent {
     node {
-      label 'slave'
+      label 'builder-WN2012R2-1'
       customWorkspace workspace
     }
   }
