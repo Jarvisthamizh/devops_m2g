@@ -3,7 +3,7 @@
 // global reusable definitions
 //
 // --------------------------------------
-def msbuild          = { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" interop.sln /m /t:rebuild /p:Configuration=$configuration /p:Platform=\"x64\" /p:ProductVersion=1.0.0.${env.BUILD_NUMBER}" }
+def msbuild          = { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" ConsoleApp1.sln /m /t:rebuild /p:Configuration=$configuration /p:Platform=\"Any Cpu\" /p:ProductVersion=1.0.0.${env.BUILD_NUMBER}" }
 //def workspace        = 'W:\\lhaikin\\for-aviv\\interop'
 def unittestsdir     = 'projects\\XUnitTestProject1'
 def unittestOutFile  = 'xunit.out.xml'
