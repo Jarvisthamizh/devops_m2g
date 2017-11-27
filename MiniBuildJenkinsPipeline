@@ -4,7 +4,7 @@
 //
 // --------------------------------------
 def msbuild          = { configuration -> bat "\"${tool 'msbuild'}\" interop.sln /m /t:rebuild /p:Configuration=$configuration /p:Platform=\"x64\" /p:ProductVersion=1.0.0.${env.BUILD_NUMBER}" }
-def workspace        = 'W:\\lhaikin\\for-aviv\\interop'
+//def workspace        = 'W:\\lhaikin\\for-aviv\\interop'
 def unittestsdir     = 'projects\\XUnitTestProject1'
 def unittestOutFile  = 'xunit.out.xml'
 
@@ -17,7 +17,7 @@ pipeline {
   agent {
     node {
       label 'builder-WN2012R2-1'
-      customWorkspace workspace
+      //customWorkspace workspace
     }
   }
   
