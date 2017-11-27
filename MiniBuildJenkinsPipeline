@@ -1,0 +1,68 @@
+// --------------------------------------
+//
+// global reusable definitions
+//
+// --------------------------------------
+def msbuild          = { configuration -> bat "\"${tool 'msbuild'}\" interop.sln /m /t:rebuild /p:Configuration=$configuration /p:Platform=\"x64\" /p:ProductVersion=1.0.0.${env.BUILD_NUMBER}" }
+def workspace        = 'W:\\lhaikin\\for-aviv\\interop'
+def unittestsdir     = 'projects\\XUnitTestProject1'
+def unittestOutFile  = 'xunit.out.xml'
+
+// --------------------------------------
+//
+// the pipeline 
+//
+// --------------------------------------
+pipeline { 
+  agent {
+    node {
+      label 'slave'
+      customWorkspace workspace
+    }
+  }
+  
+  options {
+    skipDefaultCheckout true
+    timeout(time: 1, unit: 'HOURS') 
+    timestamps()
+  }
+  
+  triggers { pollSCM('*/1 * * * *') }
+  
+  stages { 
+  
+    stage('clean workspace') {
+      steps {
+        step([$class: 'WsCleanup'])
+      }
+    }
+    
+    stage('clone repo') {
+      steps {
+        checkout scm
+      }
+    }
+    
+    stage('restore-packages') { 
+        steps {
+          bat "\"${tool 'msbuild'}\" /p:configuration=\"debug-windows\" /t:restore"
+        }
+    }
+    
+    stage('build') { 
+      steps {
+        parallel (
+          "debug-linux" : {
+            script {
+              msbuild "debug-linux"
+            }
+          },
+          "debug-windows" : {
+            script {
+                msbuild "debug-windows"
+            }
+          }
+        ) 
+      }
+    }
+    
