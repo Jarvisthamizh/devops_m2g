@@ -51,9 +51,18 @@ pipeline {
     
     stage('build') { 
       steps {
-        script {
-          msbuild "release"
-        }     
+        parallel (
+          "debug-linux" : {
+            script {
+              msbuild "debug-linux"
+            }
+          },
+          "debug-windows" : {
+            script {
+                msbuild "debug-windows"
+            }
+          }
+        ) 
       }
     }
   }
