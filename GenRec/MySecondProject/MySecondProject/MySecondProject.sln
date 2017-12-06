@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27004.2009
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowsProject", "WindowsProject\WindowsProject.csproj", "{9B22AA29-4A4A-4BF3-A7F8-A5BB00417BF8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WindowsProject", "WindowsProject\WindowsProject.csproj", "{9B22AA29-4A4A-4BF3-A7F8-A5BB00417BF8}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LinuxProject", "LinuxProject\LinuxProject.vcxproj", "{38F92C3D-990A-4AAF-B6B4-C4BF9C23CC2B}"
 EndProject
@@ -46,8 +46,8 @@ Global
 		{38F92C3D-990A-4AAF-B6B4-C4BF9C23CC2B}.Release|Any CPU.ActiveCfg = Release|x64
 		{38F92C3D-990A-4AAF-B6B4-C4BF9C23CC2B}.Release|ARM.ActiveCfg = Release|ARM
 		{38F92C3D-990A-4AAF-B6B4-C4BF9C23CC2B}.Release|ARM.Build.0 = Release|ARM
-		{38F92C3D-990A-4AAF-B6B4-C4BF9C23CC2B}.Release|x64.ActiveCfg = Release|x64
-		{38F92C3D-990A-4AAF-B6B4-C4BF9C23CC2B}.Release|x64.Build.0 = Release|x64
+		{38F92C3D-990A-4AAF-B6B4-C4BF9C23CC2B}.Release|x64.ActiveCfg = Debug|x64
+		{38F92C3D-990A-4AAF-B6B4-C4BF9C23CC2B}.Release|x64.Build.0 = Debug|x64
 		{38F92C3D-990A-4AAF-B6B4-C4BF9C23CC2B}.Release|x86.ActiveCfg = Release|x86
 		{38F92C3D-990A-4AAF-B6B4-C4BF9C23CC2B}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
