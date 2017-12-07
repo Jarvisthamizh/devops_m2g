@@ -3,8 +3,8 @@
 // global reusable definitions
 //
 // --------------------------------------
-def msbuild          = { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" GenRec\\MySecondProject\\MySecondProject\\MySecondProject.sln /m /t:rebuild /p:Configuration=$configuration /p:Platform=\"x64\" /p:ProductVersion=1.0.0.${env.BUILD_NUMBER}" }
-def restore				= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" GenRec\\MySecondProject\\MySecondProject\\MySecondProject.sln /p:Configuration=$configuration /m /t:restore"}
+def msbuild         	= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" devops_sm\\GenRec\\MySecondProject\\MySecondProject\\MySecondProject.sln /m /t:rebuild /p:Configuration=$configuration /p:Platform=\"x64\" /p:ProductVersion=1.0.0.${env.BUILD_NUMBER}" }
+def restore				= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" devops_sm\\GenRec\\MySecondProject\\MySecondProject\\MySecondProject.sln /p:Configuration=$configuration /m /t:restore"}
 //def workspace        	= 'W:\\lhaikin\\for-aviv\\interop'
 def unittestsdir     	= 'projects\\XUnitTestProject1'
 def unittestOutFile  	= 'xunit.out.xml'
