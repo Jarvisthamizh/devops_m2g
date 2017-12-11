@@ -1,0 +1,86 @@
+Description: >
+    Master Template for Deployng SM Microservice 
+    
+Parameters:
+    
+    DebugMode:
+        Description: DebugMode toggle. If yes, public access to the microservice will be allowed
+        Type: String
+        AllowedValues: [ "NO", "YES" ]
+        
+    PeerVPC:
+        Description: If DebugMode==No, specify peer VPC to communicate with, otherwise, specify any VPC
+        Type: AWS::EC2::VPC::Id
+        Default: ""
+        
+    
+Resources:
+
+    VPC:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/infra/vpc.yml'
+            Parameters:
+                MicroserviceName:   !Ref AWS::StackName
+                VpcCIDR:            10.50.32.0/19
+                PublicSubnet1CIDR:  10.50.32.0/22
+                PublicSubnet2CIDR:  10.50.36.0/22
+                PrivateSubnet1CIDR: 10.50.40.0/22
+                PrivateSubnet2CIDR: 10.50.44.0/22
+                PrivateSubnet3CIDR: 10.50.48.0/22
+                DebugMode:          !Ref DebugMode
+                PeerVPC:            !Ref PeerVPC
+
+    SecurityGroups:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/infra/security-groups.yml'
+            Parameters: 
+                MicroserviceName: !Ref AWS::StackName
+                VPC: !GetAtt VPC.Outputs.VPC
+
+    ALB:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL:  !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/infra/load-balancers.yml'
+            Parameters:
+                MicroserviceName: !Ref AWS::StackName
+                VPC: !GetAtt VPC.Outputs.VPC
+                Subnets: !GetAtt VPC.Outputs.PublicSubnets
+                SecurityGroup: !GetAtt SecurityGroups.Outputs.LoadBalancerSecurityGroup
+
+    ECS:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/cluster.yml'
+            Parameters:
+                MicroserviceName: !Ref AWS::StackName
+                InstanceType: m4.large
+                ClusterSize: 1
+                MaxClusterSize: 10
+                VPC: !GetAtt VPC.Outputs.VPC
+                SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
+                Subnets: !GetAtt VPC.Outputs.PrivateSubnets
+
+    Service:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/service.yml'
+            Parameters:
+                MicroserviceName: !Ref AWS::StackName
+                VPC: !GetAtt VPC.Outputs.VPC
+                Cluster: !GetAtt ECS.Outputs.Cluster
+                DesiredCount: 2
+                Listener: !GetAtt ALB.Outputs.Listener 
+                Path: /prod
+
+
+Outputs:
+
+    ProductServiceUrl: 
+        Description: The URL endpoint for the product service
+        Value: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "products" ]]
+
+    WebsiteServiceUrl: 
+        Description: The URL endpoint for the website service
+        Value: !Join ["", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "/" ]]
