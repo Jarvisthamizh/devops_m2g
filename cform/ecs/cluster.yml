@@ -96,12 +96,12 @@ Resources:
                   PropagateAtLaunch: true
         CreationPolicy:
             ResourceSignal: 
-                Timeout: PT15M
+                Timeout: PT20M
         UpdatePolicy:
             AutoScalingRollingUpdate:
                 MinInstancesInService: 1
                 MaxBatchSize: 1
-                PauseTime: PT15M
+                PauseTime: PT20M
                 SuspendProcesses:
                   - HealthCheck
                   - ReplaceUnhealthy
