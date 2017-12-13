@@ -38,11 +38,6 @@ Parameters:
         Type: String
         Default: 10.50.44.0/22
 
-    PrivateSubnet3CIDR:
-        Description: IP range (CIDR notation) for the private subnet in the second Availability Zone
-        Type: String
-        Default: 10.50.48.0/22
-        
     DebugMode:
         Description: Allow or not public access to the MicroserviceName (NO/YES)
         Type: String
@@ -126,17 +121,6 @@ Resources:
             Tags: 
                 - Key: Name 
                   Value: !Sub ${MicroserviceName} Private Subnet (AZ2)
-
-    PrivateSubnet3: 
-        Type: AWS::EC2::Subnet
-        Properties:
-            VpcId: !Ref VPC
-            AvailabilityZone: !Select [ 2, !GetAZs ]
-            CidrBlock: !Ref PrivateSubnet3CIDR
-            MapPublicIpOnLaunch: false
-            Tags: 
-                - Key: Name 
-                  Value: !Sub ${MicroserviceName} Private Subnet (AZ3)
 
     NatGateway1EIP:
         Type: AWS::EC2::EIP
@@ -254,7 +238,7 @@ Outputs:
 
     PrivateSubnets:
         Description: A list of the private subnets
-        Value: !Join [ ",", [ !Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3 ]]
+        Value: !Join [ ",", [ !Ref PrivateSubnet1, !Ref PrivateSubnet2 ]]
 
     PublicSubnet1:
         Description: A reference to the public subnet in the 1st Availability Zone
@@ -271,7 +255,3 @@ Outputs:
     PrivateSubnet2: 
         Description: A reference to the private subnet in the 2nd Availability Zone
         Value: !Ref PrivateSubnet2
-        
-    PrivateSubnet3: 
-        Description: A reference to the private subnet in the 3nd Availability Zone
-        Value: !Ref PrivateSubnet3

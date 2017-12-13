@@ -14,11 +14,15 @@ Parameters:
   InstanceType: 
     Description: Which instance type should we use to build the ES Domain?
     Type: String
-    Default: m4.large
+    Default: m4.large.elasticsearch
 
-  Subnets:
-    Description: Choose which subnets the Application Load Balancer should be deployed to
-    Type: List<AWS::EC2::Subnet::Id>
+  Subnet1:
+    Description: First subnet
+    Type: String
+
+  Subnet2:
+    Description: Second subnet
+    Type: String
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup::Id
@@ -28,11 +32,12 @@ Resources:
   ElasticsearchDomain:
     Type: 'AWS::Elasticsearch::Domain'
     Properties:
-      DomainName: !Sub ${MicroserviceName}-ES-Domain
+      DomainName: indexer-es-domain
       ElasticsearchVersion: !Ref ElasticsearchVersion
       ElasticsearchClusterConfig:
-        InstanceCount: '1'
+        InstanceCount: '2'
         InstanceType: !Ref InstanceType
+        ZoneAwarenessEnabled: true
       EBSOptions:
         EBSEnabled: 'true'
         Iops: 0
@@ -52,7 +57,8 @@ Resources:
         rest.action.multi.allow_explicit_index: 'true'
       VPCOptions:
         SubnetIds:
-          - !Ref Subnets
+          - !Ref Subnet1
+          - !Ref Subnet2
         SecurityGroupIds:
           - !Ref SecurityGroup
 

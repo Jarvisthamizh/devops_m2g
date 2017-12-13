@@ -27,7 +27,6 @@ Resources:
                 PublicSubnet2CIDR:  10.50.36.0/22
                 PrivateSubnet1CIDR: 10.50.40.0/22
                 PrivateSubnet2CIDR: 10.50.44.0/22
-                PrivateSubnet3CIDR: 10.50.48.0/22
                 DebugMode:          !Ref DebugMode
                 PeerVPC:            !Ref PeerVPC
 
@@ -56,8 +55,9 @@ Resources:
             Parameters:
                 MicroserviceName: !Ref AWS::StackName
                 ElasticsearchVersion: '6.0'
-                InstanceType: m4.large
-                Subnets: !GetAtt VPC.Outputs.PrivateSubnets
+                InstanceType: m4.large.elasticsearch
+                Subnet1: !GetAtt VPC.Outputs.PrivateSubnet1
+                Subnet2: !GetAtt VPC.Outputs.PrivateSubnet2
                 SecurityGroup: !GetAtt SecurityGroups.Outputs.ESServiceSecurityGroup
 
     ECS:
