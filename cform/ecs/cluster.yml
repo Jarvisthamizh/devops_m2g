@@ -99,9 +99,9 @@ Resources:
                 Timeout: PT20M
         UpdatePolicy:
             AutoScalingRollingUpdate:
-                MinInstancesInService: 1
-                MaxBatchSize: 1
-                PauseTime: PT20M
+                MinInstancesInService: !Ref ClusterSize
+                MaxBatchSize: !Ref MaxClusterSize
+                PauseTime: PT10M
                 SuspendProcesses:
                   - HealthCheck
                   - ReplaceUnhealthy
@@ -209,6 +209,60 @@ Resources:
             Path: /
             Roles: 
                 - !Ref ECSRole
+
+    ScaleUpPolicy:
+        Type: AWS::AutoScaling::ScalingPolicy
+        Properties:
+            AdjustmentType: ChangeInCapacity
+            Cooldown: 30
+            PolicyType: SimpleScaling
+            ScalingAdjustment: 1
+            AutoScalingGroupName:
+                Ref: ECSAutoScalingGroup
+                
+    ScaleDownPolicy:
+        Type: AWS::AutoScaling::ScalingPolicy
+        Properties:
+            AdjustmentType: ChangeInCapacity
+            Cooldown: 30
+            PolicyType: SimpleScaling
+            ScalingAdjustment: -1
+            AutoScalingGroupName:
+                Ref: ECSAutoScalingGroup
+
+    CPUHighAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            ActionsEnabled: true
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            EvaluationPeriods: 1
+            MetricName: CPUUtilization
+            Namespace: AWS/EC2
+            Period: 60
+            Statistic: Average
+            Threshold: 90.0
+            AlarmActions:
+                - !Ref ScaleUpPolicy
+            Dimensions:
+                - Name: AutoScalingGroupName
+                  Value: !Ref ECSAutoScalingGroup
+        
+    CPULowAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            ActionsEnabled: true
+            ComparisonOperator: LessThanOrEqualToThreshold
+            EvaluationPeriods: 1
+            MetricName: CPUUtilization
+            Namespace: AWS/EC2
+            Period: 60
+            Statistic: Average
+            Threshold: 10.0
+            AlarmActions:
+                - !Ref ScaleDownPolicy
+            Dimensions:
+                - Name: AutoScalingGroupName
+                  Value: !Ref ECSAutoScalingGroup
 
 Outputs:
 

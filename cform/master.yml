@@ -6,14 +6,36 @@ Parameters:
     DebugMode:
         Description: DebugMode toggle. If yes, public access to the microservice will be allowed
         Type: String
-        AllowedValues: [ "NO", "YES" ]
+        AllowedValues: 
+            - NO
+            - YES
         
     PeerVPC:
         Description: If DebugMode==No, specify peer VPC to communicate with, otherwise, specify any VPC
         Type: AWS::EC2::VPC::Id
         Default: ""
+
+    Deploy:
+        Description: What to deploy GREEN, BLUE, or BOTH (ES update is under construction)
+        Type: String
+        AllowedValues: 
+            - GREEN
+            - BLUE
+            - BOTH
+            - ES
+
+Conditions:
+
+    DeployGreen: !Or
+        - !Equals [ !Ref Deploy, "GREEN" ]
+        - !Equals [ !Ref Deploy, "BOTH" ]
         
-    
+    DeployBlue: !Or
+        - !Equals [ !Ref Deploy, "BLUE" ]
+        - !Equals [ !Ref Deploy, "BOTH" ]
+        
+    DeployES: !Equals [ !Ref Deploy, "ES" ]
+
 Resources:
 
     VPC:
@@ -73,10 +95,11 @@ Resources:
                 SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
                 Subnets: !GetAtt VPC.Outputs.PrivateSubnets
 
-    Service:
+    ServiceGreen:
         Type: AWS::CloudFormation::Stack
+        Condition: DeployGreen
         Properties:
-            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/service.yml'
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/service-green.yml'
             Parameters:
                 MicroserviceName: !Ref AWS::StackName
                 VPC: !GetAtt VPC.Outputs.VPC
@@ -85,6 +108,18 @@ Resources:
                 Listener: !GetAtt ALB.Outputs.Listener 
                 Path: /prod
 
+    ServiceBlue:
+        Type: AWS::CloudFormation::Stack
+        Condition: DeployBlue
+        Properties:
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/service-blue.yml'
+            Parameters:
+                MicroserviceName: !Ref AWS::StackName
+                VPC: !GetAtt VPC.Outputs.VPC
+                Cluster: !GetAtt ECS.Outputs.Cluster
+                DesiredCount: 1
+                Listener: !GetAtt ALB.Outputs.Listener 
+                Path: /prod
 
 Outputs:
 
