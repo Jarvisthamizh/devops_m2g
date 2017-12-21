@@ -1,0 +1,67 @@
+Description: ElasticsearchDomain resource
+
+Parameters:
+
+  MicroserviceName:
+    Description: A microservice name that will be prefixed to resource names
+    Type: String
+    
+  ElasticsearchVersion:
+    Description: Elasticsearch Version
+    Type: String
+    Default: '6.0'
+
+  InstanceType: 
+    Description: Which instance type should we use to build the ES Domain?
+    Type: String
+    Default: m4.large
+
+  Subnets:
+    Description: Choose which subnets the Application Load Balancer should be deployed to
+    Type: List<AWS::EC2::Subnet::Id>
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup::Id
+
+Resources:
+
+  ElasticsearchDomain:
+    Type: 'AWS::Elasticsearch::Domain'
+    Properties:
+      DomainName: !Sub ${MicroserviceName}-ES-Domain
+      ElasticsearchVersion: !Ref ElasticsearchVersion
+      ElasticsearchClusterConfig:
+        InstanceCount: '1'
+        InstanceType: !Ref InstanceType
+      EBSOptions:
+        EBSEnabled: 'true'
+        Iops: 0
+        VolumeSize: 10
+        VolumeType: standard
+      SnapshotOptions:
+        AutomatedSnapshotStartHour: '0'
+      AccessPolicies:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Deny
+            Principal:
+              AWS: '*'
+            Action: 'es:*'
+            Resource: '*'
+      AdvancedOptions:
+        rest.action.multi.allow_explicit_index: 'true'
+      VPCOptions:
+        SubnetIds:
+          - !Ref Subnets
+        SecurityGroupIds:
+          - !Ref SecurityGroup
+
+Outputs:
+
+  ESDomainArn:
+    Description: ElasticSearch Domain arn
+    Value: !GetAtt ElasticsearchDomain.DomainArn
+    
+  ESDomainEndpoint:
+    Description: The URL endpoint for the ElasticSearch Domain
+    Value: !GetAtt ElasticsearchDomain.DomainEndpoint
