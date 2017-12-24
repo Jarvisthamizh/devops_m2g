@@ -1,0 +1,101 @@
+Description: >
+    Create Resource Heap: AutoScaling Group and Service
+    
+Parameters:
+
+    MicroserviceName:
+        Description: A microservice name that will be prefixed to resource names
+        Type: String
+
+    InstanceType: 
+        Description: Which instance type should we use to build the ECS cluster?
+        Type: String
+        Default: m4.large
+
+    ClusterSize:
+        Description: How many MS Replicas do you want to initially deploy?
+        Type: Number
+        Default: 1
+
+    MaxClusterSize:
+        Description: Maximum nuber of MS Replicas allowed
+        Type: Number
+        Default: 10
+
+    VPC:
+        Description: Choose which VPC this ECS cluster should be deployed to
+        Type: AWS::EC2::VPC::Id
+
+    SecurityGroup:
+        Description: Select the Security Group to use for the ECS cluster hosts
+        Type: AWS::EC2::SecurityGroup::Id
+
+    # List<AWS::EC2::Subnet::Id> List cannot be passed down, have to use string !
+    Subnets:
+        Description: Choose which subnets this ECS cluster should be deployed to
+        Type: String
+
+    Cluster:
+        Description: ECS Cluster ID that this service should run on
+        Type: String
+
+    DesiredCount: 
+        Description: How many instances of this task should we run across our cluster?
+        Type: Number
+        Default: 1
+
+    Listener:
+        Description: The Application Load Balancer listener to register with
+        Type: String
+
+    Path: 
+        Description: The path to register with the Application Load Balancer
+        Type: String
+        Default: /test/
+
+    Image: 
+        Description: Docker Image to run
+        Type: String
+        
+    Color:
+        Description: Heap Color
+        Type: String
+        AllowedValues: 
+            - GREEN
+            - BLUE
+
+    Priority:
+        Description: Litener Rule Priority
+        Type: Number
+        
+Resources:
+
+    AutoScalingGroup:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/asg.yml'
+            Parameters:
+                MicroserviceName: !Ref MicroserviceName
+                Cluster: !Ref Cluster
+                InstanceType: !Ref InstanceType
+                ClusterSize: !Ref ClusterSize
+                MaxClusterSize: !Ref MaxClusterSize
+                VPC: !Ref VPC
+                Subnets: !Ref Subnets
+                SecurityGroup: !Ref SecurityGroup
+                Color: !Ref Color
+                
+    Service:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/service.yml'
+            Parameters:
+                MicroserviceName: !Ref MicroserviceName
+                VPC: !Ref VPC
+                Cluster: !Ref Cluster
+                DesiredCount: !Ref DesiredCount
+                Listener: !Ref Listener
+                Path: !Ref Path
+                Image: !Ref Image
+                Color: !Ref Color
+                Priority: !Ref Priority

@@ -1,5 +1,5 @@
 Description: >
-    GREEN :: ECS service that serves Microservice Containers.
+    ECS service that serves Microservice Containers.
 
 Parameters: 
 
@@ -27,31 +27,46 @@ Parameters:
     Path: 
         Description: The path to register with the Application Load Balancer
         Type: String
-        Default: /prod
+        Default: prod/
+
+    Image: 
+        Description: Docker Image to run
+        Type: String
+
+    Color:
+        Description: Heap Color
+        Type: String
+        AllowedValues: 
+            - GREEN
+            - BLUE
+
+    Priority:
+        Description: Litener Rule Priority
+        Type: Number
 
 Resources:
 
-    ServiceG:
+    Service:
         Type: AWS::ECS::Service
-        DependsOn: ListenerRuleG
+        DependsOn: ListenerRule
         Properties: 
             Cluster: !Ref Cluster
-            Role: !Ref ServiceRoleG
+            Role: !Ref ServiceRole
             DesiredCount: !Ref DesiredCount
-            TaskDefinition: !Ref TaskDefinitionG
+            TaskDefinition: !Ref TaskDefinition
             LoadBalancers: 
                 - ContainerName: !Sub ${MicroserviceName}-microservice
                   ContainerPort: 5000
-                  TargetGroupArn: !Ref TargetGroupG
+                  TargetGroupArn: !Ref TargetGroup
 
-    TaskDefinitionG:
+    TaskDefinition:
         Type: AWS::ECS::TaskDefinition
         Properties:
             Family: !Sub ${MicroserviceName}-microservice
             ContainerDefinitions:
                 - Name:  !Sub ${MicroserviceName}-microservice
                   Essential: true
-                  Image: 637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.16
+                  Image: !Ref Image
                   Memory: 300
                   Cpu: 2048
                   PortMappings:
@@ -67,13 +82,13 @@ Resources:
                         awslogs-group: !Ref AWS::StackName
                         awslogs-region: !Ref AWS::Region
     
-    CloudWatchLogsGroupG:
+    CloudWatchLogsGroup:
         Type: AWS::Logs::LogGroup
         Properties: 
             LogGroupName: !Ref AWS::StackName
             RetentionInDays: 365  
 
-    TargetGroupG:
+    TargetGroup:
         Type: AWS::ElasticLoadBalancingV2::TargetGroup
         Properties:
             VpcId: !Ref VPC
@@ -88,26 +103,26 @@ Resources:
             HealthCheckTimeoutSeconds: 5
             HealthyThresholdCount: 2
     
-    ListenerRuleG:
+    ListenerRule:
         Type: AWS::ElasticLoadBalancingV2::ListenerRule
         Properties:
             ListenerArn: !Ref Listener
-            Priority: 2
+            Priority: !Ref Priority
             Conditions:
                 - Field: path-pattern
                   Values: 
                     - !Ref Path
             Actions:
-                - TargetGroupArn: !Ref TargetGroupG
+                - TargetGroupArn: !Ref TargetGroup
                   Type: forward
 
     # This IAM Role grants the service access to register/unregister with the 
     # Application Load Balancer (ALB). It is based on the default documented here:
     # http://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_IAM_role.html
-    ServiceRoleG: 
+    ServiceRole: 
         Type: AWS::IAM::Role
         Properties: 
-            RoleName: !Sub ecs-service-${AWS::StackName}
+            RoleName: !Sub ecs-service-${MicroserviceName}-${Color}
             Path: /
             AssumeRolePolicyDocument: |
                 {

@@ -7,8 +7,8 @@ Parameters:
         Description: DebugMode toggle. If yes, public access to the microservice will be allowed
         Type: String
         AllowedValues: 
-            - NO
-            - YES
+            - "NO"
+            - "YES"
         
     PeerVPC:
         Description: If DebugMode==No, specify peer VPC to communicate with, otherwise, specify any VPC
@@ -70,22 +70,30 @@ Resources:
                 Subnets: !GetAtt VPC.Outputs.PublicSubnets
                 SecurityGroup: !GetAtt SecurityGroups.Outputs.LoadBalancerSecurityGroup
 
-    ElasticSearch:
-        Type: AWS::CloudFormation::Stack
-        Properties:
-            TemplateURL:  !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/es/es-domain.yml'
-            Parameters:
-                MicroserviceName: !Ref AWS::StackName
-                ElasticsearchVersion: '6.0'
-                InstanceType: m4.large.elasticsearch
-                Subnet1: !GetAtt VPC.Outputs.PrivateSubnet1
-                Subnet2: !GetAtt VPC.Outputs.PrivateSubnet2
-                SecurityGroup: !GetAtt SecurityGroups.Outputs.ESServiceSecurityGroup
+    # ElasticSearch:
+        # Type: AWS::CloudFormation::Stack
+        # Properties:
+            # TemplateURL:  !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/es/es-domain.yml'
+            # Parameters:
+                # MicroserviceName: !Ref AWS::StackName
+                # ElasticsearchVersion: '6.0'
+                # InstanceType: m4.large.elasticsearch
+                # Subnet1: !GetAtt VPC.Outputs.PrivateSubnet1
+                # Subnet2: !GetAtt VPC.Outputs.PrivateSubnet2
+                # SecurityGroup: !GetAtt SecurityGroups.Outputs.ESServiceSecurityGroup
 
     ECS:
         Type: AWS::CloudFormation::Stack
         Properties:
             TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/cluster.yml'
+            Parameters:
+                MicroserviceName: !Ref AWS::StackName
+
+    GreenHeap:
+        Type: AWS::CloudFormation::Stack
+        Condition: DeployGreen
+        Properties:
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/heap.yml'
             Parameters:
                 MicroserviceName: !Ref AWS::StackName
                 InstanceType: m4.large
@@ -94,32 +102,35 @@ Resources:
                 VPC: !GetAtt VPC.Outputs.VPC
                 SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
                 Subnets: !GetAtt VPC.Outputs.PrivateSubnets
-
-    ServiceGreen:
-        Type: AWS::CloudFormation::Stack
-        Condition: DeployGreen
-        Properties:
-            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/service-green.yml'
-            Parameters:
-                MicroserviceName: !Ref AWS::StackName
-                VPC: !GetAtt VPC.Outputs.VPC
                 Cluster: !GetAtt ECS.Outputs.Cluster
                 DesiredCount: 1
                 Listener: !GetAtt ALB.Outputs.Listener 
-                Path: /prod
+                Path: /prod/
+                Image: 637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.31-green
+                Color: GREEN
+                Priority: 3
 
-    ServiceBlue:
+    
+    BlueHeap:
         Type: AWS::CloudFormation::Stack
         Condition: DeployBlue
         Properties:
-            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/service-blue.yml'
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/heap.yml'
             Parameters:
                 MicroserviceName: !Ref AWS::StackName
+                InstanceType: m4.large
+                ClusterSize: 1
+                MaxClusterSize: 10
                 VPC: !GetAtt VPC.Outputs.VPC
+                SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
+                Subnets: !GetAtt VPC.Outputs.PrivateSubnets
                 Cluster: !GetAtt ECS.Outputs.Cluster
                 DesiredCount: 1
                 Listener: !GetAtt ALB.Outputs.Listener 
-                Path: /prod
+                Path: /prod/
+                Image: 637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.32-blue
+                Color: BLUE
+                Priority: 2
 
 Outputs:
 
