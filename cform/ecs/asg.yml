@@ -101,12 +101,16 @@ Resources:
                   Value: !Sub ${MicroserviceName} ECS host
                   PropagateAtLaunch: true
         CreationPolicy:
+            AutoScalingCreationPolicy:
+                MinSuccessfulInstancesPercent: 100
             ResourceSignal: 
+                Count: 1
                 Timeout: PT20M
         UpdatePolicy:
             AutoScalingRollingUpdate:
-                MinInstancesInService: !Ref ClusterSize
-                MaxBatchSize: !Ref MaxClusterSize
+                MinInstancesInService: 1
+                MinSuccessfulInstancesPercent: 100
+                MaxBatchSize: 1
                 PauseTime: PT10M
                 SuspendProcesses:
                   - HealthCheck

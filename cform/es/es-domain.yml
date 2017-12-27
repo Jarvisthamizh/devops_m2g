@@ -26,6 +26,12 @@ Parameters:
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup::Id
+    
+  CIDR1:
+    Type: String
+
+  CIDR2:
+    Type: String
 
 Resources:
 
@@ -35,9 +41,13 @@ Resources:
       DomainName: indexer-es-domain
       ElasticsearchVersion: !Ref ElasticsearchVersion
       ElasticsearchClusterConfig:
-        InstanceCount: '2'
+        InstanceCount: 2
         InstanceType: !Ref InstanceType
         ZoneAwarenessEnabled: true
+        DedicatedMasterEnabled: false
+        # Uncomment if DedicatedMasterEnabled set to true
+        # DedicatedMasterCount: 3
+        # DedicatedMasterType: m3.medium.elasticsearch
       EBSOptions:
         EBSEnabled: 'true'
         Iops: 0

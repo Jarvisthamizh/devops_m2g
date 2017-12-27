@@ -3,18 +3,6 @@ Description: >
     
 Parameters:
     
-    DebugMode:
-        Description: DebugMode toggle. If yes, public access to the microservice will be allowed
-        Type: String
-        AllowedValues: 
-            - "NO"
-            - "YES"
-        
-    PeerVPC:
-        Description: If DebugMode==No, specify peer VPC to communicate with, otherwise, specify any VPC
-        Type: AWS::EC2::VPC::Id
-        Default: ""
-
     Deploy:
         Description: What to deploy GREEN, BLUE, or BOTH (ES update is under construction)
         Type: String
@@ -23,6 +11,56 @@ Parameters:
             - BLUE
             - BOTH
             - ES
+
+    GreenImage:
+        Description: Full name of the Contaner Image for GREEN Deployment
+        Type: String
+        Default: ''
+        
+    BlueImage:
+        Description: Full name of the Contaner Image for BLUE Deployment
+        Type: String
+        Default: ''
+
+    GreenPriority:
+        Description: Priority of the GREEN ASG Listener Rule
+        Type: Number
+        Default: 0
+        
+    BluePriority:
+        Description: Priority of the BLUE ASG Listener Rule
+        Type: Number
+        Default: 0
+
+    GreenPath:
+        Description: Path pattern of the GREEN URL
+        Type: String
+        Default: /
+        
+    BluePath:
+        Description: Path pattern of the BLUE URL
+        Type: String
+        Default: /
+        
+    HomeVPC:
+        Description: VPC in which microservice resources will be created. If empty a new one will be created.
+        Type: String
+        Default: ""
+
+    PeerVPC:
+        Description: Peer VPC that will communicate with microservice. If not empty, 'Peering VPC Connection' reseorce will be created in HomeVPC
+        Type: String
+        Default: ""
+
+    CIDR1:
+        Description: CIDR of the first Private Subnet
+        Type: String
+        Default: 10.50.40.0/22
+
+    CIDR2:
+        Description: CIDR of the second Private Subnet1
+        Type: String
+        Default: 10.50.44.0/22
 
 Conditions:
 
@@ -36,10 +74,13 @@ Conditions:
         
     DeployES: !Equals [ !Ref Deploy, "ES" ]
 
+    CreateVPC: !Equals [ !Ref HomeVPC, "" ]
+    
 Resources:
 
     VPC:
         Type: AWS::CloudFormation::Stack
+        Condition: CreateVPC
         Properties:
             TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/infra/vpc.yml'
             Parameters:
@@ -47,9 +88,8 @@ Resources:
                 VpcCIDR:            10.50.32.0/19
                 PublicSubnet1CIDR:  10.50.32.0/22
                 PublicSubnet2CIDR:  10.50.36.0/22
-                PrivateSubnet1CIDR: 10.50.40.0/22
-                PrivateSubnet2CIDR: 10.50.44.0/22
-                DebugMode:          !Ref DebugMode
+                PrivateSubnet1CIDR: !Ref CIDR1
+                PrivateSubnet2CIDR: !Ref CIDR2
                 PeerVPC:            !Ref PeerVPC
 
     SecurityGroups:
@@ -58,7 +98,7 @@ Resources:
             TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/infra/security-groups.yml'
             Parameters: 
                 MicroserviceName: !Ref AWS::StackName
-                VPC: !GetAtt VPC.Outputs.VPC
+                VPC: !If [ CreateVPC, !GetAtt VPC.Outputs.VPC, !Ref HomeVPC ]
 
     ALB:
         Type: AWS::CloudFormation::Stack
@@ -66,21 +106,23 @@ Resources:
             TemplateURL:  !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/infra/load-balancers.yml'
             Parameters:
                 MicroserviceName: !Ref AWS::StackName
-                VPC: !GetAtt VPC.Outputs.VPC
+                VPC: !If [ CreateVPC, !GetAtt VPC.Outputs.VPC, !Ref HomeVPC ]
                 Subnets: !GetAtt VPC.Outputs.PublicSubnets
                 SecurityGroup: !GetAtt SecurityGroups.Outputs.LoadBalancerSecurityGroup
 
-    # ElasticSearch:
-        # Type: AWS::CloudFormation::Stack
-        # Properties:
-            # TemplateURL:  !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/es/es-domain.yml'
-            # Parameters:
-                # MicroserviceName: !Ref AWS::StackName
-                # ElasticsearchVersion: '6.0'
-                # InstanceType: m4.large.elasticsearch
-                # Subnet1: !GetAtt VPC.Outputs.PrivateSubnet1
-                # Subnet2: !GetAtt VPC.Outputs.PrivateSubnet2
-                # SecurityGroup: !GetAtt SecurityGroups.Outputs.ESServiceSecurityGroup
+    ElasticSearch:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL:  !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/es/es-domain.yml'
+            Parameters:
+                MicroserviceName: !Ref AWS::StackName
+                ElasticsearchVersion: '6.0'
+                InstanceType: m4.large.elasticsearch
+                Subnet1: !GetAtt VPC.Outputs.PrivateSubnet1
+                Subnet2: !GetAtt VPC.Outputs.PrivateSubnet2
+                SecurityGroup: !GetAtt SecurityGroups.Outputs.ESServiceSecurityGroup
+                CIDR1: !Ref CIDR1
+                CIDR2: !Ref CIDR2
 
     ECS:
         Type: AWS::CloudFormation::Stack
@@ -98,17 +140,17 @@ Resources:
                 MicroserviceName: !Ref AWS::StackName
                 InstanceType: m4.large
                 ClusterSize: 1
-                MaxClusterSize: 10
-                VPC: !GetAtt VPC.Outputs.VPC
+                MaxClusterSize: 100
+                VPC: !If [ CreateVPC, !GetAtt VPC.Outputs.VPC, !Ref HomeVPC ]
                 SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
                 Subnets: !GetAtt VPC.Outputs.PrivateSubnets
                 Cluster: !GetAtt ECS.Outputs.Cluster
                 DesiredCount: 1
                 Listener: !GetAtt ALB.Outputs.Listener 
-                Path: /prod/
-                Image: 637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.31-green
+                Path: !Ref GreenPath
+                Image: !Ref GreenImage
                 Color: GREEN
-                Priority: 3
+                Priority: !Ref GreenPriority
 
     
     BlueHeap:
@@ -120,20 +162,20 @@ Resources:
                 MicroserviceName: !Ref AWS::StackName
                 InstanceType: m4.large
                 ClusterSize: 1
-                MaxClusterSize: 10
-                VPC: !GetAtt VPC.Outputs.VPC
+                MaxClusterSize: 100
+                VPC: !If [ CreateVPC, !GetAtt VPC.Outputs.VPC, !Ref HomeVPC ]
                 SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
                 Subnets: !GetAtt VPC.Outputs.PrivateSubnets
                 Cluster: !GetAtt ECS.Outputs.Cluster
                 DesiredCount: 1
                 Listener: !GetAtt ALB.Outputs.Listener 
-                Path: /prod/
-                Image: 637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.32-blue
+                Path: !Ref BluePath
+                Image: !Ref BlueImage
                 Color: BLUE
-                Priority: 2
+                Priority: !Ref BluePriority
 
 Outputs:
 
     MicroserviceUrl: 
         Description: The URL endpoint for the microservice
-        Value: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "prod" ]]
+        Value: !GetAtt ALB.Outputs.LoadBalancerUrl
