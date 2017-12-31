@@ -44,6 +44,10 @@ Parameters:
         Description: Litener Rule Priority
         Type: Number
 
+    ESURL: 
+        Description: URL of ElasticSearch Service
+        Type: String
+
 Resources:
 
     Service:
@@ -78,6 +82,9 @@ Resources:
                     - ContainerPort: 5050
                       HostPort: 5050
                       Protocol: tcp
+                  Environment:
+                    - Name: esNodes
+                      Value: !Ref ESURL
                   LogConfiguration:
                     LogDriver: awslogs
                     Options:

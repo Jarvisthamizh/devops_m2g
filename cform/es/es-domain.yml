@@ -41,18 +41,17 @@ Resources:
       DomainName: indexer-es-domain
       ElasticsearchVersion: !Ref ElasticsearchVersion
       ElasticsearchClusterConfig:
-        InstanceCount: 2
+        InstanceCount: 10
         InstanceType: !Ref InstanceType
         ZoneAwarenessEnabled: true
-        DedicatedMasterEnabled: false
-        # Uncomment if DedicatedMasterEnabled set to true
-        # DedicatedMasterCount: 3
-        # DedicatedMasterType: m3.medium.elasticsearch
+        DedicatedMasterEnabled: true
+        DedicatedMasterCount: 3
+        DedicatedMasterType: m3.large.elasticsearch
       EBSOptions:
         EBSEnabled: 'true'
         Iops: 0
-        VolumeSize: 10
-        VolumeType: standard
+        VolumeSize: 500
+        VolumeType: gp2
       SnapshotOptions:
         AutomatedSnapshotStartHour: '0'
       AccessPolicies:

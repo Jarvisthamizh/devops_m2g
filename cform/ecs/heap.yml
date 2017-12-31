@@ -68,6 +68,10 @@ Parameters:
         Description: Litener Rule Priority
         Type: Number
         
+    ESURL: 
+        Description: URL of ElasticSearch Service
+        Type: String
+
 Resources:
 
     AutoScalingGroup:
@@ -99,3 +103,4 @@ Resources:
                 Image: !Ref Image
                 Color: !Ref Color
                 Priority: !Ref Priority
+                ESURL: !Ref ESURL

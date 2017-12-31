@@ -116,8 +116,8 @@ Resources:
             TemplateURL:  !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/es/es-domain.yml'
             Parameters:
                 MicroserviceName: !Ref AWS::StackName
-                ElasticsearchVersion: '6.0'
-                InstanceType: m4.large.elasticsearch
+                ElasticsearchVersion: '5.5'
+                InstanceType: m4.4xlarge.elasticsearch
                 Subnet1: !GetAtt VPC.Outputs.PrivateSubnet1
                 Subnet2: !GetAtt VPC.Outputs.PrivateSubnet2
                 SecurityGroup: !GetAtt SecurityGroups.Outputs.ESServiceSecurityGroup
@@ -151,6 +151,7 @@ Resources:
                 Image: !Ref GreenImage
                 Color: GREEN
                 Priority: !Ref GreenPriority
+                ESURL: !GetAtt ElasticSearch.Outputs.ESDomainEndpoint
 
     
     BlueHeap:
@@ -173,6 +174,7 @@ Resources:
                 Image: !Ref BlueImage
                 Color: BLUE
                 Priority: !Ref BluePriority
+                ESURL: !GetAtt ElasticSearch.Outputs.ESDomainEndpoint
 
 Outputs:
 
