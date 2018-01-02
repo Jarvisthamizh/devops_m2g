@@ -35,7 +35,7 @@
         },
         {
             "ParameterKey": "BluePath",
-            "ParameterValue": "/test/",
+            "ParameterValue": "/prod/",
             "UsePreviousValue": false
         },
         {

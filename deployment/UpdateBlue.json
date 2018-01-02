@@ -10,12 +10,12 @@
         },
         {
             "ParameterKey": "GreenImage",
-            "ParameterValue": "637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.31-green",
+            "ParameterValue": "637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.43-green",
             "UsePreviousValue": false
         },
         {
             "ParameterKey": "BlueImage",
-            "ParameterValue": "637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.32-blue",
+            "ParameterValue": "637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.44-blue",
             "UsePreviousValue": false
         },
         {

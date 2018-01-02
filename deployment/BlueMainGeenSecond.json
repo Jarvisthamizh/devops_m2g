@@ -20,12 +20,12 @@
         },
         {
             "ParameterKey": "GreenPriority",
-            "ParameterValue": "3",
+            "ParameterValue": "4",
             "UsePreviousValue": false
         },
         {
             "ParameterKey": "BluePriority",
-            "ParameterValue": "4",
+            "ParameterValue": "3",
             "UsePreviousValue": false
         },
         {
@@ -35,7 +35,7 @@
         },
         {
             "ParameterKey": "BluePath",
-            "ParameterValue": "/test/",
+            "ParameterValue": "/prod/",
             "UsePreviousValue": false
         },
         {

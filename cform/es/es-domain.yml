@@ -46,7 +46,7 @@ Resources:
         ZoneAwarenessEnabled: true
         DedicatedMasterEnabled: true
         DedicatedMasterCount: 3
-        DedicatedMasterType: m3.large.elasticsearch
+        DedicatedMasterType: m4.large.elasticsearch
       EBSOptions:
         EBSEnabled: 'true'
         Iops: 0
@@ -57,11 +57,11 @@ Resources:
       AccessPolicies:
         Version: 2012-10-17
         Statement:
-          - Effect: Deny
+          - Effect: Allow
             Principal:
               AWS: '*'
             Action: 'es:*'
-            Resource: '*'
+            Resource: !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/indexer-es-domain/*'
       AdvancedOptions:
         rest.action.multi.allow_explicit_index: 'true'
       VPCOptions:
