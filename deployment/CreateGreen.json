@@ -10,7 +10,7 @@
         },
         {
             "ParameterKey": "GreenImage",
-            "ParameterValue": "637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.43-green",
+            "ParameterValue": "637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.45-green",
             "UsePreviousValue": false
         },
         {

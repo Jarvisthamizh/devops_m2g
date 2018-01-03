@@ -10,22 +10,22 @@
         },
         {
             "ParameterKey": "GreenImage",
-            "ParameterValue": "637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.43-green",
+            "ParameterValue": "637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.45-green",
             "UsePreviousValue": false
         },
         {
             "ParameterKey": "BlueImage",
-            "ParameterValue": "637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.44-blue",
+            "ParameterValue": "637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.46-blue",
             "UsePreviousValue": false
         },
         {
             "ParameterKey": "GreenPriority",
-            "ParameterValue": "4",
+            "ParameterValue": "6",
             "UsePreviousValue": false
         },
         {
             "ParameterKey": "BluePriority",
-            "ParameterValue": "3",
+            "ParameterValue": "5",
             "UsePreviousValue": false
         },
         {
@@ -68,7 +68,7 @@
             "Value": "IndexerMicroservice"
         }
     ],
-    "ChangeSetName": "Indexer-BOTH",
+    "ChangeSetName": "Indexer-BL1GR2",
     "Description": "SpeechMiner Indexer Microservice",
     "ChangeSetType": "UPDATE"
 }
