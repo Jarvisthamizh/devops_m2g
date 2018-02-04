@@ -16,23 +16,13 @@ Parameters:
     Type: String
     Default: m4.large.elasticsearch
 
-  Subnet1:
-    Description: First subnet
-    Type: String
-
-  Subnet2:
-    Description: Second subnet
+  Subnets:
+    Description: two subnets in which microservice will operate
     Type: String
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup::Id
     
-  CIDR1:
-    Type: String
-
-  CIDR2:
-    Type: String
-
 Resources:
 
   ElasticsearchDomain:
@@ -65,9 +55,7 @@ Resources:
       AdvancedOptions:
         rest.action.multi.allow_explicit_index: 'true'
       VPCOptions:
-        SubnetIds:
-          - !Ref Subnet1
-          - !Ref Subnet2
+        SubnetIds: !Ref Subnets
         SecurityGroupIds:
           - !Ref SecurityGroup
 

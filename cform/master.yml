@@ -47,20 +47,35 @@ Parameters:
         Type: String
         Default: ""
 
-    PeerVPC:
-        Description: Peer VPC that will communicate with microservice. If not empty, 'Peering VPC Connection' reseorce will be created in HomeVPC
+    Subnets:
+        Description: two subnets in which microservice will operate
         Type: String
-        Default: ""
 
-    CIDR1:
-        Description: CIDR of the first Private Subnet
+    ImageID:
+        Description: Basic AMI Image of the Microservice
         Type: String
-        Default: 10.50.40.0/22
 
-    CIDR2:
-        Description: CIDR of the second Private Subnet1
+    LoadBalancerSecurityGroup:
+        Description: Security Group to use for Application Load Balancer
         Type: String
-        Default: 10.50.44.0/22
+
+    ECSHostSecurityGroup:
+        Description: Security Group to use for ECS Hosts
+        Type: String
+
+    ESServiceSecurityGroup:
+        Description: Security Group to use ECS Service
+        Type: String
+
+    ECSInstanceRole:
+        Description: IAM Role for EC2 for Amazon EC2 Container Service
+        Type: String
+        Default: ecsInstanceRole
+
+    ECSServiceRole:
+        Description: IAM Role for running ECS Service
+        Type: String
+        Default: ecsServiceRoleCustom
 
 Conditions:
 
@@ -78,72 +93,48 @@ Conditions:
     
 Resources:
 
-    VPC:
-        Type: AWS::CloudFormation::Stack
-        Condition: CreateVPC
-        Properties:
-            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/infra/vpc.yml'
-            Parameters:
-                MicroserviceName:   !Ref AWS::StackName
-                VpcCIDR:            10.50.32.0/19
-                PublicSubnet1CIDR:  10.50.32.0/22
-                PublicSubnet2CIDR:  10.50.36.0/22
-                PrivateSubnet1CIDR: !Ref CIDR1
-                PrivateSubnet2CIDR: !Ref CIDR2
-                PeerVPC:            !Ref PeerVPC
-
-    SecurityGroups:
-        Type: AWS::CloudFormation::Stack
-        Properties:
-            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/infra/security-groups.yml'
-            Parameters: 
-                MicroserviceName: !Ref AWS::StackName
-                VPC: !If [ CreateVPC, !GetAtt VPC.Outputs.VPC, !Ref HomeVPC ]
-
     ALB:
         Type: AWS::CloudFormation::Stack
         Properties:
-            TemplateURL:  !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/infra/load-balancers.yml'
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/cf-templates-14qbvrg0q2lct-us-west-1/sm-cfn/infra/load-balancers.yml'
             Parameters:
                 MicroserviceName: !Ref AWS::StackName
-                VPC: !If [ CreateVPC, !GetAtt VPC.Outputs.VPC, !Ref HomeVPC ]
-                Subnets: !GetAtt VPC.Outputs.PublicSubnets
-                SecurityGroup: !GetAtt SecurityGroups.Outputs.LoadBalancerSecurityGroup
+                VPC: !Ref HomeVPC
+                Subnets: !Ref Subnets
+                SecurityGroup: !Ref LoadBalancerSecurityGroup
 
-    ElasticSearch:
-        Type: AWS::CloudFormation::Stack
-        Properties:
-            TemplateURL:  !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/es/es-domain.yml'
-            Parameters:
-                MicroserviceName: !Ref AWS::StackName
-                ElasticsearchVersion: '5.5'
-                InstanceType: m4.4xlarge.elasticsearch
-                Subnet1: !GetAtt VPC.Outputs.PrivateSubnet1
-                Subnet2: !GetAtt VPC.Outputs.PrivateSubnet2
-                SecurityGroup: !GetAtt SecurityGroups.Outputs.ESServiceSecurityGroup
-                CIDR1: !Ref CIDR1
-                CIDR2: !Ref CIDR2
+    # ElasticSearch:
+        # Type: AWS::CloudFormation::Stack
+        # Properties:
+            # TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/cf-templates-14qbvrg0q2lct-us-west-1/sm-cfn/es/es-domain.yml'
+            # Parameters:
+                # MicroserviceName: !Ref AWS::StackName
+                # ElasticsearchVersion: '5.5'
+                # InstanceType: m4.4xlarge.elasticsearch
+                # Subnets: !Ref Subnets
+                # SecurityGroup: !Ref ESServiceSecurityGroup
 
     ECS:
         Type: AWS::CloudFormation::Stack
         Properties:
-            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/cluster.yml'
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/cf-templates-14qbvrg0q2lct-us-west-1/sm-cfn/ecs/cluster.yml'
             Parameters:
                 MicroserviceName: !Ref AWS::StackName
 
+    # !GetAtt ElasticSearch.Outputs.ESDomainEndpoint
     GreenHeap:
         Type: AWS::CloudFormation::Stack
         Condition: DeployGreen
         Properties:
-            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/heap.yml'
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/cf-templates-14qbvrg0q2lct-us-west-1/sm-cfn/ecs/heap.yml'
             Parameters:
                 MicroserviceName: !Ref AWS::StackName
                 InstanceType: m4.large
                 ClusterSize: 1
                 MaxClusterSize: 100
-                VPC: !If [ CreateVPC, !GetAtt VPC.Outputs.VPC, !Ref HomeVPC ]
-                SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
-                Subnets: !GetAtt VPC.Outputs.PrivateSubnets
+                VPC: !Ref HomeVPC
+                SecurityGroup: !Ref ECSHostSecurityGroup
+                Subnets: !Ref Subnets
                 Cluster: !GetAtt ECS.Outputs.Cluster
                 DesiredCount: 1
                 Listener: !GetAtt ALB.Outputs.Listener 
@@ -151,22 +142,25 @@ Resources:
                 Image: !Ref GreenImage
                 Color: GREEN
                 Priority: !Ref GreenPriority
-                ESURL: !GetAtt ElasticSearch.Outputs.ESDomainEndpoint
+                ESURL: 'www.example.com'
+                ImageID: !Ref ImageID
+                ECSInstanceRole: !Ref ECSInstanceRole
+                ECSServiceRole: !Ref ECSServiceRole
 
     
     BlueHeap:
         Type: AWS::CloudFormation::Stack
         Condition: DeployBlue
         Properties:
-            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/heap.yml'
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/cf-templates-14qbvrg0q2lct-us-west-1/sm-cfn/ecs/heap.yml'
             Parameters:
                 MicroserviceName: !Ref AWS::StackName
                 InstanceType: m4.large
                 ClusterSize: 1
                 MaxClusterSize: 100
-                VPC: !If [ CreateVPC, !GetAtt VPC.Outputs.VPC, !Ref HomeVPC ]
-                SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
-                Subnets: !GetAtt VPC.Outputs.PrivateSubnets
+                VPC: !Ref HomeVPC
+                SecurityGroup: !Ref ECSHostSecurityGroup
+                Subnets: !Ref Subnets
                 Cluster: !GetAtt ECS.Outputs.Cluster
                 DesiredCount: 1
                 Listener: !GetAtt ALB.Outputs.Listener 
@@ -174,7 +168,10 @@ Resources:
                 Image: !Ref BlueImage
                 Color: BLUE
                 Priority: !Ref BluePriority
-                ESURL: !GetAtt ElasticSearch.Outputs.ESDomainEndpoint
+                ESURL: 'www.example.com'
+                ImageID: !Ref ImageID
+                ECSInstanceRole: !Ref ECSInstanceRole
+                ECSServiceRole: !Ref ECSServiceRole
 
 Outputs:
 

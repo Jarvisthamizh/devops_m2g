@@ -72,12 +72,26 @@ Parameters:
         Description: URL of ElasticSearch Service
         Type: String
 
+    ImageID:
+        Description: Basic AMI Image of the Microservice
+        Type: String
+
+    ECSInstanceRole:
+        Description: IAM Role for EC2 for Amazon EC2 Container Service
+        Type: String
+        Default: ecsInstanceRole
+
+    ECSServiceRole:
+        Description: IAM Role for running ECS Service
+        Type: String
+        Default: ecsServiceRoleCustom
+        
 Resources:
 
     AutoScalingGroup:
         Type: AWS::CloudFormation::Stack
         Properties:
-            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/asg.yml'
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/cf-templates-14qbvrg0q2lct-us-west-1/sm-cfn/ecs/asg.yml'
             Parameters:
                 MicroserviceName: !Ref MicroserviceName
                 Cluster: !Ref Cluster
@@ -88,11 +102,13 @@ Resources:
                 Subnets: !Ref Subnets
                 SecurityGroup: !Ref SecurityGroup
                 Color: !Ref Color
+                ImageID: !Ref ImageID
+                ECSInstanceRole: !Ref ECSInstanceRole
                 
     Service:
         Type: AWS::CloudFormation::Stack
         Properties:
-            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/sm-msi-s3/cfn/ecs/service.yml'
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/cf-templates-14qbvrg0q2lct-us-west-1/sm-cfn/ecs/service.yml'
             Parameters:
                 MicroserviceName: !Ref MicroserviceName
                 VPC: !Ref VPC
@@ -104,3 +120,4 @@ Resources:
                 Color: !Ref Color
                 Priority: !Ref Priority
                 ESURL: !Ref ESURL
+                ECSServiceRole: !Ref ECSServiceRole

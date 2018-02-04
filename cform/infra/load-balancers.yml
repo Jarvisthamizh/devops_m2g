@@ -8,7 +8,7 @@ Parameters:
         Type: String
 
     VPC:
-        Type: AWS::EC2::VPC::Id
+        Type: String
         Description: Choose which VPC the Application Load Balancer should be deployed to
 
     Subnets:
@@ -17,7 +17,7 @@ Parameters:
 
     SecurityGroup:
         Description: Select the Security Group to apply to the Application Load Balancer
-        Type: AWS::EC2::SecurityGroup::Id
+        Type: String
 
 Resources:
 
