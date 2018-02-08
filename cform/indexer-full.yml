@@ -77,6 +77,11 @@ Parameters:
         Type: String
         Default: ecsServiceRoleCustom
 
+    IndexerPort:
+        Description: port to access Indexer ALB and beyond
+        Type: String
+        Default: 8084
+
 Conditions:
 
     DeployGreen: !Or
@@ -111,7 +116,7 @@ Resources:
             - LoadBalancer
         Properties:
             LoadBalancerArn: !Ref LoadBalancer
-            Port: 80
+            Port: !Ref IndexerPort
             Protocol: HTTP
             DefaultActions:
                 - Type: forward
@@ -125,7 +130,7 @@ Resources:
         Properties:
             Name: !Sub ${AWS::StackName}-default
             VpcId: !Ref HomeVPC
-            Port: 80
+            Port: !Ref IndexerPort
             Protocol: HTTP
 
     #--------------------------------------------------------------------------------------
@@ -217,7 +222,7 @@ Resources:
         Condition: DeployGreen
         Properties:
             ImageId:  !Ref ImageID
-            InstanceType: m4.large
+            InstanceType: m4.xlarge
             SecurityGroups: !Ref ECSHostSecurityGroup
             IamInstanceProfile: !Ref ECSInstanceRole
             KeyName: stage-voice
@@ -313,11 +318,11 @@ Resources:
                 - Name:  !Sub ${AWS::StackName}-microservice
                   Essential: true
                   Image: !Ref GreenImage
-                  Memory: 300
-                  Cpu: 2048
+                  Memory: 8000
+                  Cpu: 4096
                   PortMappings:
                     - ContainerPort: 5000
-                      HostPort: 5000
+                      HostPort: !Ref IndexerPort
                       Protocol: tcp
                   Environment:
                     - Name: esNodes
@@ -340,13 +345,13 @@ Resources:
         DependsOn: LoadBalancer
         Properties:
             VpcId: !Ref HomeVPC
-            Port: 5000
+            Port: !Ref IndexerPort
             Protocol: HTTP
             Matcher:
                 HttpCode: 200-299
             HealthCheckIntervalSeconds: 10
             HealthCheckPath: /api/v1/status/instance
-            HealthCheckPort: 5000
+            HealthCheckPort: !Ref IndexerPort
             HealthCheckProtocol: HTTP
             HealthCheckTimeoutSeconds: 5
             HealthyThresholdCount: 2
@@ -414,7 +419,7 @@ Resources:
         Condition: DeployBlue
         Properties:
             ImageId:  !Ref ImageID
-            InstanceType: m4.large
+            InstanceType: m4.xlarge
             SecurityGroups: !Ref ECSHostSecurityGroup
             IamInstanceProfile: !Ref ECSInstanceRole
             KeyName: stage-voice
@@ -510,11 +515,11 @@ Resources:
                 - Name:  !Sub ${AWS::StackName}-microservice
                   Essential: true
                   Image: !Ref BlueImage
-                  Memory: 300
-                  Cpu: 2048
+                  Memory: 8000
+                  Cpu: 4096
                   PortMappings:
                     - ContainerPort: 5000
-                      HostPort: 5000
+                      HostPort: !Ref IndexerPort
                       Protocol: tcp
                   Environment:
                     - Name: esNodes
@@ -537,13 +542,13 @@ Resources:
         DependsOn: LoadBalancer
         Properties:
             VpcId: !Ref HomeVPC
-            Port: 5000
+            Port: !Ref IndexerPort
             Protocol: HTTP
             Matcher:
                 HttpCode: 200-299
             HealthCheckIntervalSeconds: 10
             HealthCheckPath: /api/v1/status/instance
-            HealthCheckPort: 5000
+            HealthCheckPort: !Ref IndexerPort
             HealthCheckProtocol: HTTP
             HealthCheckTimeoutSeconds: 5
             HealthyThresholdCount: 2

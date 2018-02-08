@@ -39,7 +39,7 @@
             "ParameterKey": "HomeVPC"
         },
         {
-            "ParameterValue": "ami-b3000dd3",
+            "ParameterValue": "ami-e4745f84",
             "ParameterKey": "ImageID"
         },
         {
@@ -61,5 +61,9 @@
         {
             "ParameterValue": "ecsServiceRoleCustom",
             "ParameterKey": "ECSServiceRole"
+        },
+        {
+            "ParameterValue": "8300",
+            "ParameterKey": "IndexerPort"
         }
 ]
