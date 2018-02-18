@@ -103,16 +103,16 @@ Resources:
                 Subnets: !Ref Subnets
                 SecurityGroup: !Ref LoadBalancerSecurityGroup
 
-    # ElasticSearch:
-        # Type: AWS::CloudFormation::Stack
-        # Properties:
-            # TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/cf-templates-14qbvrg0q2lct-us-west-1/sm-cfn/es/es-domain.yml'
-            # Parameters:
-                # MicroserviceName: !Ref AWS::StackName
-                # ElasticsearchVersion: '5.5'
-                # InstanceType: m4.4xlarge.elasticsearch
-                # Subnets: !Ref Subnets
-                # SecurityGroup: !Ref ESServiceSecurityGroup
+    ElasticSearch:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL: !Sub 'https://s3-${AWS::Region}.amazonaws.com/cf-templates-14qbvrg0q2lct-us-west-1/sm-cfn/es/es-domain.yml'
+            Parameters:
+                MicroserviceName: !Ref AWS::StackName
+                ElasticsearchVersion: '5.5'
+                InstanceType: m4.4xlarge.elasticsearch
+                Subnets: !Ref Subnets
+                SecurityGroup: !Ref ESServiceSecurityGroup
 
     ECS:
         Type: AWS::CloudFormation::Stack

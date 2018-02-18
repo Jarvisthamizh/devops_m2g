@@ -67,6 +67,10 @@ Parameters:
         Description: Security Group to use ECS Service
         Type: AWS::EC2::SecurityGroup::Id
 
+    ServiceAccessSecurityGroup:
+        Description: Security Group to use ECS Service
+        Type: String
+
     ECSInstanceRole:
         Description: IAM Role for EC2 for Amazon EC2 Container Service
         Type: String
@@ -95,6 +99,31 @@ Conditions:
     DeployES: !Equals [ !Ref Deploy, "ES" ]
 
 Resources:
+
+    # #--------------------------------------------------------------------------------------
+    # # Security groups for a granular access control to and from tenant DMZ service
+    # #--------------------------------------------------------------------------------------
+    # SecurityGroup:
+        # Type: AWS::EC2::SecurityGroup
+        # Properties: 
+            # VpcId: !Ref HomeVPC
+            # GroupName: !Sub Role-Shared-Internal-${AWS::StackName}
+            # GroupDescription: granular access control to and from tenant DMZ service
+            # SecurityGroupIngress:
+                # # Only allow inbound access to ECS from the ELB
+                # - SourceSecurityGroupId: !Ref ServiceAccessSecurityGroup 
+                  # IpProtocol: -1
+                  # FromPort: !Ref IndexerPort
+                  # ToPort: !Ref IndexerPort
+            # SecurityGroupEgress:
+                # # Only allow outbound access to ECS from the ELB
+                # - DestinationSecurityGroupId: !Ref ServiceAccessSecurityGroup 
+                  # IpProtocol: -1
+                  # FromPort: !Ref IndexerPort
+                  # ToPort: !Ref IndexerPort
+            # Tags: 
+                # - Key: Name
+                  # Value: !Sub g1-role-shared-internal-${AWS::StackName}
 
     #--------------------------------------------------------------------------------------
     # Load Balancer and its suit
@@ -128,7 +157,7 @@ Resources:
     DefaultTargetGroup:
         Type: AWS::ElasticLoadBalancingV2::TargetGroup
         Properties:
-            Name: !Sub ${AWS::StackName}-default
+            Name: !Sub ${AWS::StackName}-default-${IndexerPort}
             VpcId: !Ref HomeVPC
             Port: !Ref IndexerPort
             Protocol: HTTP
@@ -201,7 +230,10 @@ Resources:
                   Value: !Sub ${AWS::StackName} ECS host
                   PropagateAtLaunch: true
                 - Key: Tenant ID
-                  Value: '000'
+                  Value: '00-64'
+                  PropagateAtLaunch: true
+                - Key: Responsible Party
+                  Value: 'Dan.Shaked@genesys.com'
                   PropagateAtLaunch: true
         UpdatePolicy:
             AutoScalingRollingUpdate:
@@ -239,7 +271,7 @@ Resources:
         Condition: DeployGreen
         Properties:
             AdjustmentType: ChangeInCapacity
-            Cooldown: 30
+            Cooldown: 5
             PolicyType: SimpleScaling
             ScalingAdjustment: 1
             AutoScalingGroupName: !Ref ECSAutoScalingGroupG
@@ -249,7 +281,7 @@ Resources:
         Condition: DeployGreen
         Properties:
             AdjustmentType: ChangeInCapacity
-            Cooldown: 30
+            Cooldown: 5
             PolicyType: SimpleScaling
             ScalingAdjustment: -1
             AutoScalingGroupName: !Ref ECSAutoScalingGroupG
@@ -265,7 +297,7 @@ Resources:
             Namespace: AWS/EC2
             Period: 60
             Statistic: Average
-            Threshold: 90.0
+            Threshold: 80.0
             AlarmActions:
                 - !Ref ScaleUpPolicyG
             Dimensions:
@@ -289,6 +321,42 @@ Resources:
             Dimensions:
                 - Name: AutoScalingGroupName
                   Value: !Ref ECSAutoScalingGroupG
+
+    # NINHighAlarmG:
+        # Type: AWS::CloudWatch::Alarm
+        # Condition: DeployGreen
+        # Properties:
+            # ActionsEnabled: true
+            # ComparisonOperator: GreaterThanOrEqualToThreshold
+            # EvaluationPeriods: 1
+            # MetricName: NetworkIn
+            # Namespace: AWS/EC2
+            # Period: 60
+            # Statistic: Average
+            # Threshold: 50000000
+            # AlarmActions:
+                # - !Ref ScaleUpPolicyG
+            # Dimensions:
+                # - Name: AutoScalingGroupName
+                  # Value: !Ref ECSAutoScalingGroupG
+
+    # NINLowAlarmG:
+        # Type: AWS::CloudWatch::Alarm
+        # Condition: DeployGreen
+        # Properties:
+            # ActionsEnabled: true
+            # ComparisonOperator: LessThanOrEqualToThreshold
+            # EvaluationPeriods: 1
+            # MetricName: NetworkIn
+            # Namespace: AWS/EC2
+            # Period: 60
+            # Statistic: Average
+            # Threshold: 20000000
+            # AlarmActions:
+                # - !Ref ScaleDownPolicyG
+            # Dimensions:
+                # - Name: AutoScalingGroupName
+                  # Value: !Ref ECSAutoScalingGroupG
 
     # 3. ECS Service and its suite (including Task Definition)
     ServiceG:
@@ -349,11 +417,11 @@ Resources:
             Protocol: HTTP
             Matcher:
                 HttpCode: 200-299
-            HealthCheckIntervalSeconds: 10
+            HealthCheckIntervalSeconds: 30
             HealthCheckPath: /api/v1/status/instance
             HealthCheckPort: !Ref IndexerPort
             HealthCheckProtocol: HTTP
-            HealthCheckTimeoutSeconds: 5
+            HealthCheckTimeoutSeconds: 20
             HealthyThresholdCount: 2
             Tags:
                 - Key: Color
@@ -398,14 +466,17 @@ Resources:
                   Value: !Sub ${AWS::StackName} ECS host
                   PropagateAtLaunch: true
                 - Key: Tenant ID
-                  Value: '000'
+                  Value: '00-64'
+                  PropagateAtLaunch: true
+                - Key: Responsible Party
+                  Value: 'Dan.Shaked@genesys.com'
                   PropagateAtLaunch: true
         UpdatePolicy:
             AutoScalingRollingUpdate:
                 MinInstancesInService: 1
                 MinSuccessfulInstancesPercent: 100
                 MaxBatchSize: 1
-                PauseTime: PT10M
+                PauseTime: PT5S
                 SuspendProcesses:
                     - HealthCheck
                     - ReplaceUnhealthy
@@ -462,7 +533,7 @@ Resources:
             Namespace: AWS/EC2
             Period: 60
             Statistic: Average
-            Threshold: 90.0
+            Threshold: 80.0
             AlarmActions:
                 - !Ref ScaleUpPolicyB
             Dimensions:
@@ -487,6 +558,42 @@ Resources:
                 - Name: AutoScalingGroupName
                   Value: !Ref ECSAutoScalingGroupB
 
+    # NINHighAlarmB:
+        # Type: AWS::CloudWatch::Alarm
+        # Condition: DeployBlue
+        # Properties:
+            # ActionsEnabled: true
+            # ComparisonOperator: GreaterThanOrEqualToThreshold
+            # EvaluationPeriods: 1
+            # MetricName: NetworkIn
+            # Namespace: AWS/EC2
+            # Period: 60
+            # Statistic: Average
+            # Threshold: 50000000
+            # AlarmActions:
+                # - !Ref ScaleUpPolicyB
+            # Dimensions:
+                # - Name: AutoScalingGroupName
+                  # Value: !Ref ECSAutoScalingGroupB
+
+    # NINLowAlarmB:
+        # Type: AWS::CloudWatch::Alarm
+        # Condition: DeployBlue
+        # Properties:
+            # ActionsEnabled: true
+            # ComparisonOperator: LessThanOrEqualToThreshold
+            # EvaluationPeriods: 1
+            # MetricName: NetworkIn
+            # Namespace: AWS/EC2
+            # Period: 60
+            # Statistic: Average
+            # Threshold: 20000000
+            # AlarmActions:
+                # - !Ref ScaleDownPolicyB
+            # Dimensions:
+                # - Name: AutoScalingGroupName
+                  # Value: !Ref ECSAutoScalingGroupB
+                  
     # 3. ECS Service and its suite (including Task Definition)
     ServiceB:
         Type: AWS::ECS::Service
@@ -546,11 +653,11 @@ Resources:
             Protocol: HTTP
             Matcher:
                 HttpCode: 200-299
-            HealthCheckIntervalSeconds: 10
+            HealthCheckIntervalSeconds: 30
             HealthCheckPath: /api/v1/status/instance
             HealthCheckPort: !Ref IndexerPort
             HealthCheckProtocol: HTTP
-            HealthCheckTimeoutSeconds: 5
+            HealthCheckTimeoutSeconds: 20
             HealthyThresholdCount: 2
             Tags:
                 - Key: Color

@@ -13,7 +13,7 @@
             "ParameterKey": "GreenPath"
         },
         {
-            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:12",
+            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:15",
             "ParameterKey": "GreenImage"
         },
 		
@@ -22,11 +22,11 @@
             "ParameterKey": "BluePriority"
         },
         {
-            "ParameterValue": "/prod/",
+            "ParameterValue": "/api/v1/*",
             "ParameterKey": "BluePath"
         },
         {
-            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer-mock:0.60-blue",
+            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:15",
             "ParameterKey": "BlueImage"
         },
 		
@@ -53,6 +53,10 @@
         {
             "ParameterValue": "sg-951781f2",
             "ParameterKey": "ESServiceSecurityGroup"
+        },
+        {
+            "ParameterValue": "sg-951781f2",
+            "ParameterKey": "ServiceAccessSecurityGroup"
         },
         {
             "ParameterValue": "ecsInstanceRole",
