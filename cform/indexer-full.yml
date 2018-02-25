@@ -1,0 +1,693 @@
+Description: >
+    Master Template for Deployng SM Microservice
+
+Parameters:
+
+    Deploy:
+        Description: What to deploy GREEN, BLUE, or BOTH (ES update is under construction)
+        Type: String
+        AllowedValues:
+            - GREEN
+            - BLUE
+            - BOTH
+            - ES
+
+    GreenImage:
+        Description: Full name of the Contaner Image for GREEN Deployment
+        Type: String
+        Default: ''
+
+    BlueImage:
+        Description: Full name of the Contaner Image for BLUE Deployment
+        Type: String
+        Default: ''
+
+    GreenPriority:
+        Description: Priority of the GREEN ASG Listener Rule
+        Type: Number
+        Default: 0
+
+    BluePriority:
+        Description: Priority of the BLUE ASG Listener Rule
+        Type: Number
+        Default: 0
+
+    GreenPath:
+        Description: Path pattern of the GREEN URL
+        Type: String
+        Default: /
+
+    BluePath:
+        Description: Path pattern of the BLUE URL
+        Type: String
+        Default: /
+
+    HomeVPC:
+        Description: VPC in which microservice resources will be created. If empty a new one will be created.
+        Type: String
+        Default: ""
+
+    Subnets:
+        Description: two subnets in which microservice will operate
+        Type: List<AWS::EC2::Subnet::Id>
+
+    ImageID:
+        Description: Basic AMI Image of the Microservice
+        Type: String
+
+    LoadBalancerSecurityGroup:
+        Description: Security Group to use for Application Load Balancer
+        Type: List<AWS::EC2::SecurityGroup::Id>
+
+    ECSHostSecurityGroup:
+        Description: Security Group to use for ECS Hosts
+        Type: List<AWS::EC2::SecurityGroup::Id>
+
+    ESServiceSecurityGroup:
+        Description: Security Group to use ECS Service
+        Type: AWS::EC2::SecurityGroup::Id
+
+    ServiceAccessSecurityGroup:
+        Description: Security Group to use ECS Service
+        Type: String
+
+    ECSInstanceRole:
+        Description: IAM Role for EC2 for Amazon EC2 Container Service
+        Type: String
+        Default: ecsInstanceRole
+
+    ECSServiceRole:
+        Description: IAM Role for running ECS Service
+        Type: String
+        Default: ecsServiceRoleCustom
+
+    IndexerPort:
+        Description: port to access Indexer ALB and beyond
+        Type: String
+        Default: 8084
+
+Conditions:
+
+    DeployGreen: !Or
+        - !Equals [ !Ref Deploy, "GREEN" ]
+        - !Equals [ !Ref Deploy, "BOTH" ]
+
+    DeployBlue: !Or
+        - !Equals [ !Ref Deploy, "BLUE" ]
+        - !Equals [ !Ref Deploy, "BOTH" ]
+
+    DeployES: !Equals [ !Ref Deploy, "ES" ]
+
+Resources:
+
+    # #--------------------------------------------------------------------------------------
+    # # Security groups for a granular access control to and from tenant DMZ service
+    # #--------------------------------------------------------------------------------------
+    # SecurityGroup:
+        # Type: AWS::EC2::SecurityGroup
+        # Properties: 
+            # VpcId: !Ref HomeVPC
+            # GroupName: !Sub Role-Shared-Internal-${AWS::StackName}
+            # GroupDescription: granular access control to and from tenant DMZ service
+            # SecurityGroupIngress:
+                # # Only allow inbound access to ECS from the ELB
+                # - SourceSecurityGroupId: !Ref ServiceAccessSecurityGroup 
+                  # IpProtocol: -1
+                  # FromPort: !Ref IndexerPort
+                  # ToPort: !Ref IndexerPort
+            # SecurityGroupEgress:
+                # # Only allow outbound access to ECS from the ELB
+                # - DestinationSecurityGroupId: !Ref ServiceAccessSecurityGroup 
+                  # IpProtocol: -1
+                  # FromPort: !Ref IndexerPort
+                  # ToPort: !Ref IndexerPort
+            # Tags: 
+                # - Key: Name
+                  # Value: !Sub g1-role-shared-internal-${AWS::StackName}
+
+    #--------------------------------------------------------------------------------------
+    # Load Balancer and its suit
+    #--------------------------------------------------------------------------------------
+    LoadBalancer:
+        Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+        Properties:
+            Name: !Ref AWS::StackName
+            Subnets: !Ref Subnets
+            Scheme: internal
+            SecurityGroups: !Ref LoadBalancerSecurityGroup
+            Tags:
+                - Key: Name
+                  Value: !Ref AWS::StackName
+
+    LoadBalancerListener:
+        Type: AWS::ElasticLoadBalancingV2::Listener
+        DependsOn:
+            - LoadBalancer
+        Properties:
+            LoadBalancerArn: !Ref LoadBalancer
+            Port: !Ref IndexerPort
+            Protocol: HTTP
+            DefaultActions:
+                - Type: forward
+                  TargetGroupArn: !Ref DefaultTargetGroup
+
+    # We define a default target group here, as this is a mandatory Parameters
+    # when creating an Application Load Balancer Listener. This is not used, instead
+    # a target group is created per-service
+    DefaultTargetGroup:
+        Type: AWS::ElasticLoadBalancingV2::TargetGroup
+        Properties:
+            Name: !Sub ${AWS::StackName}-default-${IndexerPort}
+            VpcId: !Ref HomeVPC
+            Port: !Ref IndexerPort
+            Protocol: HTTP
+
+    #--------------------------------------------------------------------------------------
+    # Elastic Search Domain service
+    #--------------------------------------------------------------------------------------
+    ElasticsearchDomain:
+        Type: 'AWS::Elasticsearch::Domain'
+        Properties:
+            DomainName: indexer-es-domain
+            ElasticsearchVersion: '5.5'
+            ElasticsearchClusterConfig:
+                InstanceCount: 10
+                InstanceType: m4.4xlarge.elasticsearch
+                ZoneAwarenessEnabled: true
+                DedicatedMasterEnabled: true
+                DedicatedMasterCount: 3
+                DedicatedMasterType: m4.large.elasticsearch
+            EBSOptions:
+                EBSEnabled: 'true'
+                Iops: 0
+                VolumeSize: 500
+                VolumeType: gp2
+            SnapshotOptions:
+                AutomatedSnapshotStartHour: '0'
+            AccessPolicies:
+                Version: 2012-10-17
+                Statement:
+                    - Effect: Allow
+                      Principal:
+                          AWS: '*'
+                      Action: 'es:*'
+                      Resource: !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/indexer-es-domain/*'
+            AdvancedOptions:
+                rest.action.multi.allow_explicit_index: 'true'
+            VPCOptions:
+                SubnetIds:
+                  - !Select [ 0, !Ref Subnets ]
+                  - !Select [ 1, !Ref Subnets ]
+                SecurityGroupIds:
+                  - !Ref ESServiceSecurityGroup
+
+    #--------------------------------------------------------------------------------------
+    # ECS Cluster
+    #--------------------------------------------------------------------------------------
+    ECSCluster:
+        Type: AWS::ECS::Cluster
+        Properties:
+            ClusterName: !Ref AWS::StackName
+
+    #--------------------------------------------------------------------------------------
+    # Green Heap
+    #--------------------------------------------------------------------------------------
+
+    # 1. Auto Scaling Group and its suite
+    ECSAutoScalingGroupG:
+        Type: AWS::AutoScaling::AutoScalingGroup
+        Condition: DeployGreen
+        DependsOn: ECSLaunchConfigurationG
+        Properties:
+            VPCZoneIdentifier: !Ref Subnets
+            LaunchConfigurationName: !Ref ECSLaunchConfigurationG
+            MinSize: 1
+            MaxSize: 100
+            DesiredCapacity: 1
+            HealthCheckType: EC2
+            Tags:
+                - Key: Name
+                  Value: !Sub ${AWS::StackName} ECS host
+                  PropagateAtLaunch: true
+                - Key: Tenant ID
+                  Value: '00-64'
+                  PropagateAtLaunch: true
+                - Key: Responsible Party
+                  Value: 'Dan.Shaked@genesys.com'
+                  PropagateAtLaunch: true
+        UpdatePolicy:
+            AutoScalingRollingUpdate:
+                MinInstancesInService: 1
+                MinSuccessfulInstancesPercent: 100
+                MaxBatchSize: 1
+                PauseTime: PT10M
+                SuspendProcesses:
+                    - HealthCheck
+                    - ReplaceUnhealthy
+                    - AZRebalance
+                    - AlarmNotification
+                    - ScheduledActions
+                WaitOnResourceSignals: true
+
+    ECSLaunchConfigurationG:
+        Type: AWS::AutoScaling::LaunchConfiguration
+        Condition: DeployGreen
+        Properties:
+            ImageId:  !Ref ImageID
+            InstanceType: m4.xlarge
+            SecurityGroups: !Ref ECSHostSecurityGroup
+            IamInstanceProfile: !Ref ECSInstanceRole
+            KeyName: stage-voice
+            UserData:
+                "Fn::Base64": !Sub |
+                    #!/bin/sh
+                    echo "ECS_CLUSTER=${AWS::StackName}" >> /etc/ecs/ecs.config
+                    echo "HTTP_PROXY=proxy.geo.g1.genhtcc.com:8080" >> /etc/ecs/ecs.config
+                    echo "NO_PROXY=169.254.169.254,169.254.170.2,/var/run/docker.sock" >> /etc/ecs/ecs.config
+
+    # 2. Policies and Alarms
+    ScaleUpPolicyG:
+        Type: AWS::AutoScaling::ScalingPolicy
+        Condition: DeployGreen
+        Properties:
+            AdjustmentType: ChangeInCapacity
+            Cooldown: 5
+            PolicyType: SimpleScaling
+            ScalingAdjustment: 1
+            AutoScalingGroupName: !Ref ECSAutoScalingGroupG
+
+    ScaleDownPolicyG:
+        Type: AWS::AutoScaling::ScalingPolicy
+        Condition: DeployGreen
+        Properties:
+            AdjustmentType: ChangeInCapacity
+            Cooldown: 5
+            PolicyType: SimpleScaling
+            ScalingAdjustment: -1
+            AutoScalingGroupName: !Ref ECSAutoScalingGroupG
+
+    CPUHighAlarmG:
+        Type: AWS::CloudWatch::Alarm
+        Condition: DeployGreen
+        Properties:
+            ActionsEnabled: true
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            EvaluationPeriods: 1
+            MetricName: CPUUtilization
+            Namespace: AWS/EC2
+            Period: 60
+            Statistic: Average
+            Threshold: 80.0
+            AlarmActions:
+                - !Ref ScaleUpPolicyG
+            Dimensions:
+                - Name: AutoScalingGroupName
+                  Value: !Ref ECSAutoScalingGroupG
+
+    CPULowAlarmG:
+        Type: AWS::CloudWatch::Alarm
+        Condition: DeployGreen
+        Properties:
+            ActionsEnabled: true
+            ComparisonOperator: LessThanOrEqualToThreshold
+            EvaluationPeriods: 1
+            MetricName: CPUUtilization
+            Namespace: AWS/EC2
+            Period: 60
+            Statistic: Average
+            Threshold: 10.0
+            AlarmActions:
+                - !Ref ScaleDownPolicyG
+            Dimensions:
+                - Name: AutoScalingGroupName
+                  Value: !Ref ECSAutoScalingGroupG
+
+    # NINHighAlarmG:
+        # Type: AWS::CloudWatch::Alarm
+        # Condition: DeployGreen
+        # Properties:
+            # ActionsEnabled: true
+            # ComparisonOperator: GreaterThanOrEqualToThreshold
+            # EvaluationPeriods: 1
+            # MetricName: NetworkIn
+            # Namespace: AWS/EC2
+            # Period: 60
+            # Statistic: Average
+            # Threshold: 50000000
+            # AlarmActions:
+                # - !Ref ScaleUpPolicyG
+            # Dimensions:
+                # - Name: AutoScalingGroupName
+                  # Value: !Ref ECSAutoScalingGroupG
+
+    # NINLowAlarmG:
+        # Type: AWS::CloudWatch::Alarm
+        # Condition: DeployGreen
+        # Properties:
+            # ActionsEnabled: true
+            # ComparisonOperator: LessThanOrEqualToThreshold
+            # EvaluationPeriods: 1
+            # MetricName: NetworkIn
+            # Namespace: AWS/EC2
+            # Period: 60
+            # Statistic: Average
+            # Threshold: 20000000
+            # AlarmActions:
+                # - !Ref ScaleDownPolicyG
+            # Dimensions:
+                # - Name: AutoScalingGroupName
+                  # Value: !Ref ECSAutoScalingGroupG
+
+    # 3. ECS Service and its suite (including Task Definition)
+    ServiceG:
+        Type: AWS::ECS::Service
+        DependsOn: 
+            - ListenerRuleG
+            - TaskDefinitionG
+        Condition: DeployGreen
+        Properties:
+            Cluster: !Ref ECSCluster
+            Role: !Ref ECSServiceRole
+            DesiredCount: 1
+            TaskDefinition: !Ref TaskDefinitionG
+            PlacementStrategies :
+                - Type: random
+            LoadBalancers:
+                - ContainerName: !Sub ${AWS::StackName}-microservice
+                  ContainerPort: 5000
+                  TargetGroupArn: !Ref TargetGroupG
+
+    TaskDefinitionG:
+        Type: AWS::ECS::TaskDefinition
+        Condition: DeployGreen
+        Properties:
+            Family: !Sub ${AWS::StackName}-microservice
+            ContainerDefinitions:
+                - Name:  !Sub ${AWS::StackName}-microservice
+                  Essential: true
+                  Image: !Ref GreenImage
+                  Memory: 8000
+                  Cpu: 4096
+                  PortMappings:
+                    - ContainerPort: 5000
+                      HostPort: !Ref IndexerPort
+                      Protocol: tcp
+                  Environment:
+                    - Name: esNodes
+                      Value: !GetAtt ElasticsearchDomain.DomainEndpoint
+                # LogConfiguration:
+                #  LogDriver: awslogs
+                #  Options:
+                #      awslogs-group: !Ref AWS::StackName
+                #      awslogs-region: !Ref AWS::Region
+
+    # CloudWatchLogsGroup:
+    #    Type: AWS::Logs::LogGroup
+    #    Properties:
+    #        LogGroupName: !Ref AWS::StackName
+    #        RetentionInDays: 30
+
+    TargetGroupG:
+        Type: AWS::ElasticLoadBalancingV2::TargetGroup
+        Condition: DeployGreen
+        DependsOn: LoadBalancer
+        Properties:
+            VpcId: !Ref HomeVPC
+            Port: !Ref IndexerPort
+            Protocol: HTTP
+            Matcher:
+                HttpCode: 200-299
+            HealthCheckIntervalSeconds: 30
+            HealthCheckPath: /api/v1/status/instance
+            HealthCheckPort: !Ref IndexerPort
+            HealthCheckProtocol: HTTP
+            HealthCheckTimeoutSeconds: 20
+            HealthyThresholdCount: 2
+            Tags:
+                - Key: Color
+                  Value: GREEN
+                - Key: Image
+                  Value: !Ref GreenImage
+
+    ListenerRuleG:
+        Type: AWS::ElasticLoadBalancingV2::ListenerRule
+        Condition: DeployGreen
+        DependsOn:
+            - LoadBalancerListener
+            - TargetGroupG
+        Properties:
+            ListenerArn: !Ref LoadBalancerListener
+            Priority: !Ref GreenPriority
+            Conditions:
+                - Field: path-pattern
+                  Values:
+                    - !Ref GreenPath
+            Actions:
+                - TargetGroupArn: !Ref TargetGroupG
+                  Type: forward
+
+    #--------------------------------------------------------------------------------------
+    # Blue Heap
+    #--------------------------------------------------------------------------------------
+
+    # 1. Auto Scaling Group and its suite
+    ECSAutoScalingGroupB:
+        Type: AWS::AutoScaling::AutoScalingGroup
+        Condition: DeployBlue
+        Properties:
+            VPCZoneIdentifier: !Ref Subnets
+            LaunchConfigurationName: !Ref ECSLaunchConfigurationB
+            MinSize: 1
+            MaxSize: 100
+            DesiredCapacity: 1
+            HealthCheckType: EC2
+            Tags:
+                - Key: Name
+                  Value: !Sub ${AWS::StackName} ECS host
+                  PropagateAtLaunch: true
+                - Key: Tenant ID
+                  Value: '00-64'
+                  PropagateAtLaunch: true
+                - Key: Responsible Party
+                  Value: 'Dan.Shaked@genesys.com'
+                  PropagateAtLaunch: true
+        UpdatePolicy:
+            AutoScalingRollingUpdate:
+                MinInstancesInService: 1
+                MinSuccessfulInstancesPercent: 100
+                MaxBatchSize: 1
+                PauseTime: PT5S
+                SuspendProcesses:
+                    - HealthCheck
+                    - ReplaceUnhealthy
+                    - AZRebalance
+                    - AlarmNotification
+                    - ScheduledActions
+                WaitOnResourceSignals: true
+
+    ECSLaunchConfigurationB:
+        Type: AWS::AutoScaling::LaunchConfiguration
+        Condition: DeployBlue
+        Properties:
+            ImageId:  !Ref ImageID
+            InstanceType: m4.xlarge
+            SecurityGroups: !Ref ECSHostSecurityGroup
+            IamInstanceProfile: !Ref ECSInstanceRole
+            KeyName: stage-voice
+            UserData:
+                "Fn::Base64": !Sub |
+                    #!/bin/sh
+                    echo "ECS_CLUSTER=${AWS::StackName}" >> /etc/ecs/ecs.config
+                    echo "HTTP_PROXY=proxy.geo.g1.genhtcc.com:8080" >> /etc/ecs/ecs.config
+                    echo "NO_PROXY=169.254.169.254,169.254.170.2,/var/run/docker.sock" >> /etc/ecs/ecs.config
+
+    # 2. Policies and Alarms
+    ScaleUpPolicyB:
+        Type: AWS::AutoScaling::ScalingPolicy
+        Condition: DeployBlue
+        Properties:
+            AdjustmentType: ChangeInCapacity
+            Cooldown: 30
+            PolicyType: SimpleScaling
+            ScalingAdjustment: 1
+            AutoScalingGroupName: !Ref ECSAutoScalingGroupB
+
+    ScaleDownPolicyB:
+        Type: AWS::AutoScaling::ScalingPolicy
+        Condition: DeployBlue
+        Properties:
+            AdjustmentType: ChangeInCapacity
+            Cooldown: 30
+            PolicyType: SimpleScaling
+            ScalingAdjustment: -1
+            AutoScalingGroupName: !Ref ECSAutoScalingGroupB
+
+    CPUHighAlarmB:
+        Type: AWS::CloudWatch::Alarm
+        Condition: DeployBlue
+        Properties:
+            ActionsEnabled: true
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            EvaluationPeriods: 1
+            MetricName: CPUUtilization
+            Namespace: AWS/EC2
+            Period: 60
+            Statistic: Average
+            Threshold: 80.0
+            AlarmActions:
+                - !Ref ScaleUpPolicyB
+            Dimensions:
+                - Name: AutoScalingGroupName
+                  Value: !Ref ECSAutoScalingGroupB
+
+    CPULowAlarmB:
+        Type: AWS::CloudWatch::Alarm
+        Condition: DeployBlue
+        Properties:
+            ActionsEnabled: true
+            ComparisonOperator: LessThanOrEqualToThreshold
+            EvaluationPeriods: 1
+            MetricName: CPUUtilization
+            Namespace: AWS/EC2
+            Period: 60
+            Statistic: Average
+            Threshold: 10.0
+            AlarmActions:
+                - !Ref ScaleDownPolicyB
+            Dimensions:
+                - Name: AutoScalingGroupName
+                  Value: !Ref ECSAutoScalingGroupB
+
+    # NINHighAlarmB:
+        # Type: AWS::CloudWatch::Alarm
+        # Condition: DeployBlue
+        # Properties:
+            # ActionsEnabled: true
+            # ComparisonOperator: GreaterThanOrEqualToThreshold
+            # EvaluationPeriods: 1
+            # MetricName: NetworkIn
+            # Namespace: AWS/EC2
+            # Period: 60
+            # Statistic: Average
+            # Threshold: 50000000
+            # AlarmActions:
+                # - !Ref ScaleUpPolicyB
+            # Dimensions:
+                # - Name: AutoScalingGroupName
+                  # Value: !Ref ECSAutoScalingGroupB
+
+    # NINLowAlarmB:
+        # Type: AWS::CloudWatch::Alarm
+        # Condition: DeployBlue
+        # Properties:
+            # ActionsEnabled: true
+            # ComparisonOperator: LessThanOrEqualToThreshold
+            # EvaluationPeriods: 1
+            # MetricName: NetworkIn
+            # Namespace: AWS/EC2
+            # Period: 60
+            # Statistic: Average
+            # Threshold: 20000000
+            # AlarmActions:
+                # - !Ref ScaleDownPolicyB
+            # Dimensions:
+                # - Name: AutoScalingGroupName
+                  # Value: !Ref ECSAutoScalingGroupB
+                  
+    # 3. ECS Service and its suite (including Task Definition)
+    ServiceB:
+        Type: AWS::ECS::Service
+        DependsOn: 
+            - ListenerRuleB
+            - TaskDefinitionB
+        Condition: DeployBlue
+        Properties:
+            Cluster: !Ref ECSCluster
+            Role: !Ref ECSServiceRole
+            DesiredCount: 1
+            TaskDefinition: !Ref TaskDefinitionB
+            PlacementStrategies :
+                - Type: random
+            LoadBalancers:
+                - ContainerName: !Sub ${AWS::StackName}-microservice
+                  ContainerPort: 5000
+                  TargetGroupArn: !Ref TargetGroupB
+
+    TaskDefinitionB:
+        Type: AWS::ECS::TaskDefinition
+        Condition: DeployBlue
+        Properties:
+            Family: !Sub ${AWS::StackName}-microservice
+            ContainerDefinitions:
+                - Name:  !Sub ${AWS::StackName}-microservice
+                  Essential: true
+                  Image: !Ref BlueImage
+                  Memory: 8000
+                  Cpu: 4096
+                  PortMappings:
+                    - ContainerPort: 5000
+                      HostPort: !Ref IndexerPort
+                      Protocol: tcp
+                  Environment:
+                    - Name: esNodes
+                      Value: !GetAtt ElasticsearchDomain.DomainEndpoint
+                # LogConfiguration:
+                #  LogDriver: awslogs
+                #  Options:
+                #      awslogs-group: !Ref AWS::StackName
+                #      awslogs-region: !Ref AWS::Region
+
+    # CloudWatchLogsGroupB:
+    #    Type: AWS::Logs::LogGroup
+    #    Properties:
+    #        LogGroupName: !Ref AWS::StackName
+    #        RetentionInDays: 30
+
+    TargetGroupB:
+        Type: AWS::ElasticLoadBalancingV2::TargetGroup
+        Condition: DeployBlue
+        DependsOn: LoadBalancer
+        Properties:
+            VpcId: !Ref HomeVPC
+            Port: !Ref IndexerPort
+            Protocol: HTTP
+            Matcher:
+                HttpCode: 200-299
+            HealthCheckIntervalSeconds: 30
+            HealthCheckPath: /api/v1/status/instance
+            HealthCheckPort: !Ref IndexerPort
+            HealthCheckProtocol: HTTP
+            HealthCheckTimeoutSeconds: 20
+            HealthyThresholdCount: 2
+            Tags:
+                - Key: Color
+                  Value: BLUE
+                - Key: Image
+                  Value: !Ref BlueImage
+
+    ListenerRuleB:
+        Type: AWS::ElasticLoadBalancingV2::ListenerRule
+        Condition: DeployBlue
+        DependsOn:
+            - LoadBalancerListener
+            - TargetGroupB
+        Properties:
+            ListenerArn: !Ref LoadBalancerListener
+            Priority: !Ref BluePriority
+            Conditions:
+                - Field: path-pattern
+                  Values:
+                    - !Ref BluePath
+            Actions:
+                - TargetGroupArn: !Ref TargetGroupB
+                  Type: forward
+
+Outputs:
+
+    MicroserviceUrl:
+        Description: The URL endpoint for the microservice
+        Value: !GetAtt LoadBalancer.DNSName
+
+    ElasticSearchUrl:
+        Description: URL for Elastic Search
+        Value: !GetAtt ElasticsearchDomain.DomainEndpoint

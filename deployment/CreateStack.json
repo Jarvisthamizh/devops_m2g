@@ -1,0 +1,66 @@
+{                                                 
+    "StackName": "Indexer",
+    "TemplateURL": "https://s3-ap-southeast-2.amazonaws.com/sm-msi-s3/cfn/master.yml",
+    "Parameters": [
+        {
+            "ParameterKey": "Deploy",
+            "ParameterValue": "GREEN",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "GreenImage",
+            "ParameterValue": "637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.45-green",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "BlueImage",
+            "ParameterValue": "N/A",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "GreenPriority",
+            "ParameterValue": "2",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "BluePriority",
+            "ParameterValue": "0",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "GreenPath",
+            "ParameterValue": "/prod/",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "BluePath",
+            "ParameterValue": "N/A",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "HomeVPC",
+            "ParameterValue": "",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "PeerVPC",
+            "ParameterValue": "",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "CIDR1",
+            "ParameterValue": "10.50.40.0/22",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "CIDR2",
+            "ParameterValue": "10.50.44.0/22",
+            "UsePreviousValue": false
+        }
+    ],
+    "DisableRollback": true,                      
+    "Capabilities": [                             
+        "CAPABILITY_NAMED_IAM"                    
+    ],                                            
+    "EnableTerminationProtection": false           
+}                                                 

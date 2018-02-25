@@ -1,0 +1,74 @@
+{
+    "StackName": "Indexer",
+    "TemplateURL": "https://s3-ap-southeast-2.amazonaws.com/sm-msi-s3/cfn/master.yml",
+    "UsePreviousTemplate": false,
+    "Parameters": [
+        {
+            "ParameterKey": "Deploy",
+            "ParameterValue": "BLUE",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "GreenImage",
+            "ParameterValue": "637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.45-green",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "BlueImage",
+            "ParameterValue": "637540547703.dkr.ecr.ap-southeast-2.amazonaws.com/indexer-mock:0.46-blue",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "GreenPriority",
+            "ParameterValue": "3",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "BluePriority",
+            "ParameterValue": "2",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "GreenPath",
+            "ParameterValue": "/prod/",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "BluePath",
+            "ParameterValue": "/prod/",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "HomeVPC",
+            "ParameterValue": "",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "PeerVPC",
+            "ParameterValue": "",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "CIDR1",
+            "ParameterValue": "10.50.40.0/22",
+            "UsePreviousValue": false
+        },
+        {
+            "ParameterKey": "CIDR2",
+            "ParameterValue": "10.50.44.0/22",
+            "UsePreviousValue": false
+        }
+    ],
+    "Capabilities": [
+        "CAPABILITY_NAMED_IAM"
+    ],
+    "Tags": [
+        {
+            "Key": "Name",
+            "Value": "IndexerMicroservice"
+        }
+    ],
+    "ChangeSetName": "Indexer-BLUE",
+    "Description": "SpeechMiner Indexer Microservice",
+    "ChangeSetType": "UPDATE"
+}

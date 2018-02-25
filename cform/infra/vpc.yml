@@ -1,9 +1,11 @@
 Description: >
-    This template deploys a VPC, along with required public and private subnets spread 
-    across two Availabilty Zones. It deploys an Internet Gateway, with a default 
-    route on the public subnets. It deploys a pair of NAT Gateways (one in each AZ), 
-    and default routes for them in the private subnets.
-    
+    Deploy a VPC, along with required private subnets spread across two Availability Zones.
+    ECS Cluster and Services will be created in these subnets. 
+    Also, ElasticSearch Service will be unfolded there. It deploys a VPC peering connection as well.
+    This stack deployment is optional. 
+    The decision to deploy it or not will depend on the general deployment procedure of SpeechMiner.
+    If Speechminer microservices will exist in single VPC, Indexer VPC creation should be omitted.
+
 Parameters:
 
     MicroserviceName:
@@ -38,21 +40,10 @@ Parameters:
         Type: String
         Default: 10.50.44.0/22
 
-    DebugMode:
-        Description: Allow or not public access to the MicroserviceName (NO/YES)
-        Type: String
-        Default: NO
-        
     PeerVPC:
         Description: If DebugMode==No, specify peer VPC to communicate with
-        Type: AWS::EC2::VPC::Id
+        Type: String
 
-Conditions:
-    
-    OpenWidely: !Equals [ !Ref DebugMode, "YES" ]
-    CloseTightly: !Equals [ !Ref DebugMode, "NO" ]
-    
-    
 Resources:
 
     VPC: 
@@ -65,7 +56,6 @@ Resources:
             
     InternetGateway:
         Type: AWS::EC2::InternetGateway
-        Condition: OpenWidely
         Properties:
             Tags:
                 - Key: Name
@@ -73,7 +63,6 @@ Resources:
             
     InternetGatewayAttachment:
         Type: AWS::EC2::VPCGatewayAttachment
-        Condition: OpenWidely
         Properties:
             InternetGatewayId: !Ref InternetGateway
             VpcId: !Ref VPC
@@ -156,20 +145,18 @@ Resources:
 
     DefaultPublicRoute: 
         Type: AWS::EC2::Route
-        Condition: OpenWidely
         DependsOn: InternetGatewayAttachment
         Properties: 
             RouteTableId: !Ref PublicRouteTable
             DestinationCidrBlock: 0.0.0.0/0
             GatewayId: !Ref InternetGateway
 
-    DefaultOutboundRoute: 
-        Type: AWS::EC2::Route
-        Condition: CloseTightly
-        Properties: 
-            RouteTableId: !Ref PublicRouteTable
-            DestinationCidrBlock: 0.0.0.0/0
-            GatewayId: !Ref PeerVPC
+    # DefaultOutboundRoute: 
+        # Type: AWS::EC2::Route
+        # Properties: 
+            # RouteTableId: !Ref PublicRouteTable
+            # DestinationCidrBlock: 0.0.0.0/0
+            # GatewayId: !Ref PeerVPC
 
     PublicSubnet1RouteTableAssociation:
         Type: AWS::EC2::SubnetRouteTableAssociation

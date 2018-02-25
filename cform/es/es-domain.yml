@@ -16,17 +16,13 @@ Parameters:
     Type: String
     Default: m4.large.elasticsearch
 
-  Subnet1:
-    Description: First subnet
-    Type: String
-
-  Subnet2:
-    Description: Second subnet
+  Subnets:
+    Description: two subnets in which microservice will operate
     Type: String
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup::Id
-
+    
 Resources:
 
   ElasticsearchDomain:
@@ -35,30 +31,31 @@ Resources:
       DomainName: indexer-es-domain
       ElasticsearchVersion: !Ref ElasticsearchVersion
       ElasticsearchClusterConfig:
-        InstanceCount: '2'
+        InstanceCount: 10
         InstanceType: !Ref InstanceType
         ZoneAwarenessEnabled: true
+        DedicatedMasterEnabled: true
+        DedicatedMasterCount: 3
+        DedicatedMasterType: m4.large.elasticsearch
       EBSOptions:
         EBSEnabled: 'true'
         Iops: 0
-        VolumeSize: 10
-        VolumeType: standard
+        VolumeSize: 500
+        VolumeType: gp2
       SnapshotOptions:
         AutomatedSnapshotStartHour: '0'
       AccessPolicies:
         Version: 2012-10-17
         Statement:
-          - Effect: Deny
+          - Effect: Allow
             Principal:
               AWS: '*'
             Action: 'es:*'
-            Resource: '*'
+            Resource: !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/indexer-es-domain/*'
       AdvancedOptions:
         rest.action.multi.allow_explicit_index: 'true'
       VPCOptions:
-        SubnetIds:
-          - !Ref Subnet1
-          - !Ref Subnet2
+        SubnetIds: !Ref Subnets
         SecurityGroupIds:
           - !Ref SecurityGroup
 

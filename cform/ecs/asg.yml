@@ -1,0 +1,190 @@
+Description: >
+    Deploy an ASG to the provided VPC and subnets 
+
+Parameters:
+
+    MicroserviceName:
+        Description: A microservice name that will be prefixed to resource names
+        Type: String
+
+    Cluster:
+        Description: ECS Cluster ID to relay instances to
+        Type: String
+
+    InstanceType: 
+        Description: Which instance type should we use to build the ECS cluster?
+        Type: String
+        Default: m4.large
+
+    ClusterSize:
+        Description: How many MS Replicas do you want to initially deploy?
+        Type: Number
+        Default: 1
+
+    MaxClusterSize:
+        Description: Maximum nuber of MS Replicas allowed
+        Type: Number
+        Default: 10
+
+    VPC:
+        Description: Choose which VPC this ECS cluster should be deployed to
+        Type: AWS::EC2::VPC::Id
+
+    Subnets:
+        Description: Choose which subnets this ECS cluster should be deployed to
+        Type: String
+
+    SecurityGroup:
+        Description: Select the Security Group to use for the ECS cluster hosts
+        Type: AWS::EC2::SecurityGroup::Id
+
+    Color:
+        Description: Heap Color
+        Type: String
+        AllowedValues: 
+            - GREEN
+            - BLUE
+        
+    ImageID:
+        Description: Basic AMI Image of the Microservice
+        Type: String
+
+    ECSInstanceRole:
+        Description: IAM Role for EC2 for Amazon EC2 Container Service
+        Type: String
+        Default: ecsInstanceRole
+
+Resources:
+
+    ECSAutoScalingGroup:
+        Type: AWS::AutoScaling::AutoScalingGroup
+        Properties: 
+            VPCZoneIdentifier: !Ref Subnets
+            LaunchConfigurationName: !Ref ECSLaunchConfiguration
+            MinSize: !Ref ClusterSize
+            MaxSize: !Ref MaxClusterSize
+            DesiredCapacity: !Ref ClusterSize
+            Tags: 
+                - Key: Name
+                  Value: !Sub ${MicroserviceName} ECS host
+                  PropagateAtLaunch: true
+        CreationPolicy:
+            AutoScalingCreationPolicy:
+                MinSuccessfulInstancesPercent: 100
+            ResourceSignal: 
+                Count: 1
+                Timeout: PT20M
+        UpdatePolicy:
+            AutoScalingRollingUpdate:
+                MinInstancesInService: 1
+                MinSuccessfulInstancesPercent: 100
+                MaxBatchSize: 1
+                PauseTime: PT10M
+                SuspendProcesses:
+                  - HealthCheck
+                  - ReplaceUnhealthy
+                  - AZRebalance
+                  - AlarmNotification
+                  - ScheduledActions
+                WaitOnResourceSignals: true
+        
+    ECSLaunchConfiguration:
+        Type: AWS::AutoScaling::LaunchConfiguration
+        Properties:
+            ImageId:  !Ref ImageID
+            InstanceType: !Ref InstanceType
+            SecurityGroups: 
+                - !Ref SecurityGroup
+            IamInstanceProfile: !Ref ECSInstanceRole
+            UserData: 
+                "Fn::Base64": !Sub |
+                    #!/bin/bash
+                    yum install -y aws-cfn-bootstrap
+                    /opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource ECSLaunchConfiguration
+                    /opt/aws/bin/cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource ECSAutoScalingGroup
+        Metadata:
+            AWS::CloudFormation::Init:
+                config:
+                    commands:
+                        01_add_instance_to_cluster:
+                            command: !Sub 
+                                - echo ECS_CLUSTER=${ecs_cluster} >> /etc/ecs/ecs.config
+                                - { ecs_cluster: !Ref Cluster }
+                    files:
+                        "/etc/cfn/cfn-hup.conf":
+                            mode: 000400
+                            owner: root
+                            group: root
+                            content: !Sub |
+                                [main]
+                                stack=${AWS::StackId}
+                                region=${AWS::Region}
+                        
+                        "/etc/cfn/hooks.d/cfn-auto-reloader.conf":
+                            content: !Sub |
+                                [cfn-auto-reloader-hook]
+                                triggers=post.update
+                                path=Resources.ECSLaunchConfiguration.Metadata.AWS::CloudFormation::Init
+                                action=/opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource ECSLaunchConfiguration
+                    services: 
+                        sysvinit:
+                            cfn-hup: 
+                                enabled: true
+                                ensureRunning: true
+                                files: 
+                                    - /etc/cfn/cfn-hup.conf
+                                    - /etc/cfn/hooks.d/cfn-auto-reloader.conf
+
+    ScaleUpPolicy:
+        Type: AWS::AutoScaling::ScalingPolicy
+        Properties:
+            AdjustmentType: ChangeInCapacity
+            Cooldown: 30
+            PolicyType: SimpleScaling
+            ScalingAdjustment: 1
+            AutoScalingGroupName:
+                Ref: ECSAutoScalingGroup
+                
+    ScaleDownPolicy:
+        Type: AWS::AutoScaling::ScalingPolicy
+        Properties:
+            AdjustmentType: ChangeInCapacity
+            Cooldown: 30
+            PolicyType: SimpleScaling
+            ScalingAdjustment: -1
+            AutoScalingGroupName:
+                Ref: ECSAutoScalingGroup
+
+    CPUHighAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            ActionsEnabled: true
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            EvaluationPeriods: 1
+            MetricName: CPUUtilization
+            Namespace: AWS/EC2
+            Period: 60
+            Statistic: Average
+            Threshold: 90.0
+            AlarmActions:
+                - !Ref ScaleUpPolicy
+            Dimensions:
+                - Name: AutoScalingGroupName
+                  Value: !Ref ECSAutoScalingGroup
+        
+    CPULowAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            ActionsEnabled: true
+            ComparisonOperator: LessThanOrEqualToThreshold
+            EvaluationPeriods: 1
+            MetricName: CPUUtilization
+            Namespace: AWS/EC2
+            Period: 60
+            Statistic: Average
+            Threshold: 10.0
+            AlarmActions:
+                - !Ref ScaleDownPolicy
+            Dimensions:
+                - Name: AutoScalingGroupName
+                  Value: !Ref ECSAutoScalingGroup

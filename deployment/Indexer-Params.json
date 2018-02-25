@@ -1,0 +1,73 @@
+[
+        {
+            "ParameterValue": "GREEN",
+            "ParameterKey": "Deploy"
+        },
+		
+        {
+            "ParameterValue": "2",
+            "ParameterKey": "GreenPriority"
+        },
+        {
+            "ParameterValue": "/api/v1/*",
+            "ParameterKey": "GreenPath"
+        },
+        {
+            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:15",
+            "ParameterKey": "GreenImage"
+        },
+		
+        {
+            "ParameterValue": "2",
+            "ParameterKey": "BluePriority"
+        },
+        {
+            "ParameterValue": "/api/v1/*",
+            "ParameterKey": "BluePath"
+        },
+        {
+            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:15",
+            "ParameterKey": "BlueImage"
+        },
+		
+        {
+            "ParameterValue": "subnet-24bf2d40, subnet-28c36070",
+            "ParameterKey": "Subnets"
+        },
+        {
+            "ParameterValue": "vpc-1e99827b",
+            "ParameterKey": "HomeVPC"
+        },
+        {
+            "ParameterValue": "ami-e4745f84",
+            "ParameterKey": "ImageID"
+        },
+        {
+            "ParameterValue": "sg-951781f2",
+            "ParameterKey": "LoadBalancerSecurityGroup"
+        },
+        {
+            "ParameterValue": "sg-951781f2,sg-921781f5",
+            "ParameterKey": "ECSHostSecurityGroup"
+        },
+        {
+            "ParameterValue": "sg-951781f2",
+            "ParameterKey": "ESServiceSecurityGroup"
+        },
+        {
+            "ParameterValue": "sg-951781f2",
+            "ParameterKey": "ServiceAccessSecurityGroup"
+        },
+        {
+            "ParameterValue": "ecsInstanceRole",
+            "ParameterKey": "ECSInstanceRole"
+        },
+        {
+            "ParameterValue": "ecsServiceRoleCustom",
+            "ParameterKey": "ECSServiceRole"
+        },
+        {
+            "ParameterValue": "8300",
+            "ParameterKey": "IndexerPort"
+        }
+]
