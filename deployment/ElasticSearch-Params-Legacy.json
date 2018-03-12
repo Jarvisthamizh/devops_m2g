@@ -1,0 +1,14 @@
+[
+        {
+            "ParameterValue": "subnet-405c1e29,subnet-765c1e1f",
+            "ParameterKey": "Subnets"
+        },
+        {
+            "ParameterValue": "sg-bc4e52d0",
+            "ParameterKey": "ESServiceSecurityGroup"
+        },
+        {
+            "ParameterValue": "indexer-es-domain-legacy",
+            "ParameterKey": "ESDomainName"
+        }
+]

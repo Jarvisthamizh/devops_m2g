@@ -1,11 +1,11 @@
 [
         {
-            "ParameterValue": "BOTH",
+            "ParameterValue": "GREEN",
             "ParameterKey": "Deploy"
         },
 		
         {
-            "ParameterValue": "2",
+            "ParameterValue": "5",
             "ParameterKey": "GreenPriority"
         },
         {
@@ -18,7 +18,7 @@
         },
 		
         {
-            "ParameterValue": "3",
+            "ParameterValue": "2",
             "ParameterKey": "BluePriority"
         },
         {
@@ -26,16 +26,16 @@
             "ParameterKey": "BluePath"
         },
         {
-            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:202",
+            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:196",
             "ParameterKey": "BlueImage"
         },
 		
         {
-            "ParameterValue": "subnet-24bf2d40, subnet-28c36070",
+            "ParameterValue": "subnet-405c1e29,subnet-765c1e1f",
             "ParameterKey": "Subnets"
         },
         {
-            "ParameterValue": "vpc-1e99827b",
+            "ParameterValue": "vpc-21f46748",
             "ParameterKey": "HomeVPC"
         },
         {
@@ -43,19 +43,19 @@
             "ParameterKey": "ImageID"
         },
         {
-            "ParameterValue": "sg-951781f2",
+            "ParameterValue": "sg-4aed0125",
             "ParameterKey": "LoadBalancerSecurityGroup"
         },
         {
-            "ParameterValue": "sg-951781f2",
+            "ParameterValue": "sg-4aed0125",
             "ParameterKey": "ECSHostSecurityGroup"
         },
         {
-            "ParameterValue": "sg-921781f5",
+            "ParameterValue": "sg-bc4e52d0",
             "ParameterKey": "ESServiceSecurityGroup"
         },
         {
-            "ParameterValue": "sg-951781f2",
+            "ParameterValue": "sg-4aed0125",
             "ParameterKey": "ServiceAccessSecurityGroup"
         },
         {
@@ -71,8 +71,8 @@
             "ParameterKey": "IndexerPort"
         },
         {
-            "ParameterValue": "proxy.geo.g1.genhtcc.com:8080",
-            "ParameterKey": "ECSHttpProxy"
+            "ParameterValue": "SM-ElasticSearch-legacy-usw1",
+            "ParameterKey": "ElasticSearchStack"
         },
         {
             "ParameterValue": "169.254.169.254,169.254.170.2,/var/run/docker.sock",

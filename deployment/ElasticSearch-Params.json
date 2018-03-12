@@ -1,0 +1,10 @@
+[
+        {
+            "ParameterValue": "subnet-24bf2d40, subnet-28c36070",
+            "ParameterKey": "Subnets"
+        },
+        {
+            "ParameterValue": "sg-951781f2",
+            "ParameterKey": "ESServiceSecurityGroup"
+        }
+]

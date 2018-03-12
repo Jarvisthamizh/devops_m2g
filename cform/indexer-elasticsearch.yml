@@ -1,0 +1,67 @@
+Description: >
+    Elasticsearch Service for Indexer Microservice
+
+Parameters:
+
+    Subnets:
+        Description: two subnets in which microservice will operate
+        Type: List<AWS::EC2::Subnet::Id>
+
+    ESServiceSecurityGroup:
+        Description: Security Group to use ECS Service
+        Type: AWS::EC2::SecurityGroup::Id
+
+    ESDomainName:  
+        Description: ElasticSearch Domain Name
+        Type: String
+        Default: indexer-es-domain
+        
+Resources:
+
+    #--------------------------------------------------------------------------------------
+    # Elastic Search Domain service
+    #--------------------------------------------------------------------------------------
+    ElasticsearchDomain:
+        Type: 'AWS::Elasticsearch::Domain'
+        Properties:
+            DomainName: !Ref ESDomainName
+            ElasticsearchVersion: '5.5'
+            ElasticsearchClusterConfig:
+                InstanceCount: 2
+                InstanceType: m4.4xlarge.elasticsearch
+                ZoneAwarenessEnabled: true
+                DedicatedMasterEnabled: true
+                DedicatedMasterCount: 3
+                DedicatedMasterType: m4.large.elasticsearch
+            EBSOptions:
+                EBSEnabled: 'true'
+                Iops: 0
+                VolumeSize: 500
+                VolumeType: gp2
+            SnapshotOptions:
+                AutomatedSnapshotStartHour: '0'
+            AccessPolicies:
+                Version: 2012-10-17
+                Statement:
+                    - Effect: Allow
+                      Principal:
+                          AWS: '*'
+                      Action: 'es:*'
+                      Resource: !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/indexer-es-domain/*'
+            AdvancedOptions:
+                rest.action.multi.allow_explicit_index: 'true'
+            VPCOptions:
+                SubnetIds:
+                  - !Select [ 0, !Ref Subnets ]
+                  - !Select [ 1, !Ref Subnets ]
+                SecurityGroupIds:
+                  - !Ref ESServiceSecurityGroup
+
+
+Outputs:
+
+    ElasticSearchUrl:
+        Description: URL for Elastic Search
+        Value: !Join [ "", [ "https://", !GetAtt ElasticsearchDomain.DomainEndpoint ] ]
+        Export:
+            Name: !Join [ "-", [ !Ref "AWS::StackName", URL ] ]
