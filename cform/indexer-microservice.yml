@@ -348,7 +348,7 @@ Resources:
         Properties:
             ActionsEnabled: true
             ComparisonOperator: GreaterThanOrEqualToThreshold
-            EvaluationPeriods: 2
+            EvaluationPeriods: 10
             MetricName: CPUUtilization
             Namespace: AWS/EC2
             Period: 60
@@ -370,12 +370,12 @@ Resources:
         Properties:
             ActionsEnabled: true
             ComparisonOperator: LessThanOrEqualToThreshold
-            EvaluationPeriods: 2
+            EvaluationPeriods: 15
             MetricName: CPUUtilization
             Namespace: AWS/EC2
             Period: 60
             Statistic: Average
-            Threshold: 10.0
+            Threshold: 30.0
             AlarmActions:
                 - !Ref ASGScaleDownPolicyG
                 - !Ref ECSScaleDownPolicyG
@@ -665,7 +665,7 @@ Resources:
         Properties:
             ActionsEnabled: true
             ComparisonOperator: GreaterThanOrEqualToThreshold
-            EvaluationPeriods: 2
+            EvaluationPeriods: 10
             MetricName: CPUUtilization
             Namespace: AWS/EC2
             Period: 60
@@ -687,12 +687,12 @@ Resources:
         Properties:
             ActionsEnabled: true
             ComparisonOperator: LessThanOrEqualToThreshold
-            EvaluationPeriods: 2
+            EvaluationPeriods: 15
             MetricName: CPUUtilization
             Namespace: AWS/EC2
             Period: 60
             Statistic: Average
-            Threshold: 10.0
+            Threshold: 30.0
             AlarmActions:
                 - !Ref ASGScaleDownPolicyB
                 - !Ref ECSScaleDownPolicyB  
