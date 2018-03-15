@@ -247,8 +247,9 @@ Resources:
                 "Fn::Base64": !Sub |
                     #!/bin/sh
                     echo "ECS_CLUSTER=${AWS::StackName}" >> /etc/ecs/ecs.config
-                    echo "HTTP_PROXY=${ECSHttpProxy}" >> /etc/ecs/ecs.config
-                    echo "NO_PROXY=${ECSNoProxy}" >> /etc/ecs/ecs.config
+
+    # echo "HTTP_PROXY=${ECSHttpProxy}" >> /etc/ecs/ecs.config
+    # echo "NO_PROXY=${ECSNoProxy}" >> /etc/ecs/ecs.config
 
     # 2. Policies and Alarms
     ASGScaleUpPolicyG:
@@ -563,8 +564,10 @@ Resources:
                 "Fn::Base64": !Sub |
                     #!/bin/sh
                     echo "ECS_CLUSTER=${AWS::StackName}" >> /etc/ecs/ecs.config
-                    echo "HTTP_PROXY=${ECSHttpProxy}" >> /etc/ecs/ecs.config
-                    echo "NO_PROXY=${ECSNoProxy}" >> /etc/ecs/ecs.config
+
+
+    # echo "HTTP_PROXY=${ECSHttpProxy}" >> /etc/ecs/ecs.config
+    # echo "NO_PROXY=${ECSNoProxy}" >> /etc/ecs/ecs.config
 
     # 2. Policies and Alarms
     ASGScaleUpPolicyB:

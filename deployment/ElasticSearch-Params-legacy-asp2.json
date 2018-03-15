@@ -1,10 +1,10 @@
 [
         {
-            "ParameterValue": "subnet-405c1e29,subnet-765c1e1f",
+            "ParameterValue": "subnet-3c918c48,subnet-15788e70",
             "ParameterKey": "Subnets"
         },
         {
-            "ParameterValue": "sg-bc4e52d0",
+            "ParameterValue": "sg-0b63866e,sg-00638665,sg-a62bfcc3",
             "ParameterKey": "ESServiceSecurityGroup"
         },
         {

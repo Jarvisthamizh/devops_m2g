@@ -9,7 +9,7 @@ Parameters:
 
     ESServiceSecurityGroup:
         Description: Security Group to use ECS Service
-        Type: AWS::EC2::SecurityGroup::Id
+        Type: List<AWS::EC2::SecurityGroup::Id>
 
     ESDomainName:  
         Description: ElasticSearch Domain Name
@@ -47,15 +47,14 @@ Resources:
                       Principal:
                           AWS: '*'
                       Action: 'es:*'
-                      Resource: !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/indexer-es-domain/*'
+                      Resource: !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/${ESDomainName}/*'
             AdvancedOptions:
                 rest.action.multi.allow_explicit_index: 'true'
             VPCOptions:
                 SubnetIds:
                   - !Select [ 0, !Ref Subnets ]
                   - !Select [ 1, !Ref Subnets ]
-                SecurityGroupIds:
-                  - !Ref ESServiceSecurityGroup
+                SecurityGroupIds: !Ref ESServiceSecurityGroup
 
 
 Outputs:

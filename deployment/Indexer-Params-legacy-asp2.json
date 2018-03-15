@@ -31,31 +31,31 @@
         },
 		
         {
-            "ParameterValue": "subnet-405c1e29,subnet-765c1e1f",
+            "ParameterValue": "subnet-3c918c48,subnet-15788e70", 
             "ParameterKey": "Subnets"
         },
         {
-            "ParameterValue": "vpc-21f46748",
+            "ParameterValue": "vpc-acf0ecce",
             "ParameterKey": "HomeVPC"
         },
         {
-            "ParameterValue": "ami-2490ad44",
+            "ParameterValue": "ami-0d03f86f",
             "ParameterKey": "ImageID"
         },
         {
-            "ParameterValue": "sg-4aed0125",
+            "ParameterValue": "sg-00638665",
             "ParameterKey": "LoadBalancerSecurityGroup"
         },
         {
-            "ParameterValue": "sg-4aed0125",
+            "ParameterValue": "sg-00638665",
             "ParameterKey": "ECSHostSecurityGroup"
         },
         {
-            "ParameterValue": "sg-bc4e52d0",
+            "ParameterValue": "sg-a62bfcc3",
             "ParameterKey": "ESServiceSecurityGroup"
         },
         {
-            "ParameterValue": "sg-4aed0125",
+            "ParameterValue": "sg-00638665",
             "ParameterKey": "ServiceAccessSecurityGroup"
         },
         {
@@ -67,11 +67,11 @@
             "ParameterKey": "ECSServiceRole"
         },
         {
-            "ParameterValue": "8084",
+            "ParameterValue": "8300",
             "ParameterKey": "IndexerPort"
         },
         {
-            "ParameterValue": "SM-ElasticSearch-legacy-usw1",
+            "ParameterValue": "SM-ElasticSearch-legacy-asp2",
             "ParameterKey": "ElasticSearchStack"
         },
         {
