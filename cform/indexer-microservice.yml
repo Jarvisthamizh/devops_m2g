@@ -371,6 +371,8 @@ Resources:
             MetricAggregationType: Average
     
    
+    # Alarms with RequestCountPerTarget metric - indexer does not consume CPU nor Memory,
+    # so to be able to know when to scale-out/in the service, we monitor the load balancer
     RequestCountPerTargetHighAlarmG:
         Type: AWS::CloudWatch::Alarm
         Condition: DeployGreen
@@ -396,51 +398,6 @@ Resources:
                   Value: !GetAtt TargetGroupG.TargetGroupFullName
                 - Name: LoadBalancer
                   Value: !GetAtt LoadBalancer.LoadBalancerFullName  
-   
-    # CPUHighAlarmG:
-        # Type: AWS::CloudWatch::Alarm
-        # Condition: DeployGreen
-        # DependsOn:
-            # - ASGScaleUpPolicyG
-            # - ECSScaleUpPolicyG
-        # Properties:
-            # ActionsEnabled: true
-            # ComparisonOperator: GreaterThanOrEqualToThreshold
-            # EvaluationPeriods: 10
-            # MetricName: CPUUtilization
-            # Namespace: AWS/EC2
-            # Period: 60
-            # Statistic: Average
-            # Threshold: 75.0
-            # AlarmActions:
-                # - !Ref ASGScaleUpPolicyG
-                # - !Ref ECSScaleUpPolicyG
-            # Dimensions:
-                # - Name: AutoScalingGroupName
-                  # Value: !Ref ECSAutoScalingGroupG      
-
-      
-    # CPUHighAlarmG:
-        # Type: AWS::CloudWatch::Alarm
-        # Condition: DeployGreen
-        # DependsOn:
-            # - ASGScaleUpPolicyG
-            # - ECSScaleUpPolicyG
-        # Properties:
-            # ActionsEnabled: true
-            # ComparisonOperator: GreaterThanOrEqualToThreshold
-            # EvaluationPeriods: 10
-            # MetricName: CPUUtilization
-            # Namespace: AWS/EC2
-            # Period: 60
-            # Statistic: Average
-            # Threshold: 75.0
-            # AlarmActions:
-                # - !Ref ASGScaleUpPolicyG
-                # - !Ref ECSScaleUpPolicyG
-            # Dimensions:
-                # - Name: AutoScalingGroupName
-                  # Value: !Ref ECSAutoScalingGroupG
                   
     RequestCountPerTargetLowAlarmG:
         Type: AWS::CloudWatch::Alarm
@@ -467,66 +424,6 @@ Resources:
                   Value: !GetAtt TargetGroupG.TargetGroupFullName
                 - Name: LoadBalancer
                   Value: !GetAtt LoadBalancer.LoadBalancerFullName  
-
-    # CPULowAlarmG:
-        # Type: AWS::CloudWatch::Alarm
-        # Condition: DeployGreen
-        # DependsOn:
-            # - ASGScaleDownPolicyG
-            # - ECSScaleDownPolicyG
-        # Properties:
-            # ActionsEnabled: true
-            # ComparisonOperator: LessThanOrEqualToThreshold
-            # EvaluationPeriods: 15
-            # MetricName: CPUUtilization
-            # Namespace: AWS/EC2
-            # Period: 60
-            # Statistic: Average
-            # Threshold: 30.0
-            # AlarmActions:
-                # - !Ref ASGScaleDownPolicyG
-                # - !Ref ECSScaleDownPolicyG
-            # Dimensions:
-                # - Name: AutoScalingGroupName
-                  # Value: !Ref ECSAutoScalingGroupG
-
-    # NINHighAlarmG:
-        # Type: AWS::CloudWatch::Alarm
-        # Condition: DeployGreen
-        # Properties:
-            # ActionsEnabled: true
-            # ComparisonOperator: GreaterThanOrEqualToThreshold
-            # EvaluationPeriods: 1
-            # MetricName: NetworkIn
-            # Namespace: AWS/EC2
-            # Period: 60
-            # Statistic: Average
-            # Threshold: 15000000000
-            # AlarmActions:
-                # - !Ref ASGScaleUpPolicyG
-                # - !Ref ECSScaleUpPolicyG
-            # Dimensions:
-                # - Name: AutoScalingGroupName
-                  # Value: !Ref ECSAutoScalingGroupG
-
-    # NINLowAlarmG:
-        # Type: AWS::CloudWatch::Alarm
-        # Condition: DeployGreen
-        # Properties:
-            # ActionsEnabled: true
-            # ComparisonOperator: LessThanOrEqualToThreshold
-            # EvaluationPeriods: 1
-            # MetricName: NetworkIn
-            # Namespace: AWS/EC2
-            # Period: 60
-            # Statistic: Average
-            # Threshold: 40000000
-            # AlarmActions:
-                # - !Ref ASGScaleDownPolicyG
-                # - !Ref ECSScaleDownPolicyG
-            # Dimensions:
-                # - Name: AutoScalingGroupName
-                  # Value: !Ref ECSAutoScalingGroupG
 
     # 3. ECS Service and its suite (including Task Definition)
     ServiceG:
@@ -763,30 +660,9 @@ Resources:
                   ScalingAdjustment: -1
             Cooldown: 5
             MetricAggregationType: Average
-            
-            
-    # CPUHighAlarmB:
-        # Type: AWS::CloudWatch::Alarm
-        # Condition: DeployBlue
-        # DependsOn:
-            # - ASGScaleUpPolicyB
-            # - ECSScaleUpPolicyB
-        # Properties:
-            # ActionsEnabled: true
-            # ComparisonOperator: GreaterThanOrEqualToThreshold
-            # EvaluationPeriods: 10
-            # MetricName: CPUUtilization
-            # Namespace: AWS/EC2
-            # Period: 60
-            # Statistic: Average
-            # Threshold: 75.0
-            # AlarmActions:
-                # - !Ref ASGScaleUpPolicyB
-                # - !Ref ECSScaleUpPolicyB
-            # Dimensions:
-                # - Name: AutoScalingGroupName
-                  # Value: !Ref ECSAutoScalingGroupB
-                  
+      
+    # Alarms with RequestCountPerTarget metric - indexer does not consume CPU nor Memory,
+    # so to be able to know when to scale-out/in the service, we monitor the load balancer
     RequestCountPerTargetHighAlarmB:
         Type: AWS::CloudWatch::Alarm
         Condition: DeployBlue
@@ -812,28 +688,6 @@ Resources:
                   Value: !GetAtt TargetGroupB.TargetGroupFullName
                 - Name: LoadBalancer
                   Value: !GetAtt LoadBalancer.LoadBalancerFullName  
-
-    # CPULowAlarmB:
-        # Type: AWS::CloudWatch::Alarm
-        # Condition: DeployBlue
-        # DependsOn:
-            # - ASGScaleDownPolicyB
-            # - ECSScaleDownPolicyB
-        # Properties:
-            # ActionsEnabled: true
-            # ComparisonOperator: LessThanOrEqualToThreshold
-            # EvaluationPeriods: 15
-            # MetricName: CPUUtilization
-            # Namespace: AWS/EC2
-            # Period: 60
-            # Statistic: Average
-            # Threshold: 30.0
-            # AlarmActions:
-                # - !Ref ASGScaleDownPolicyB
-                # - !Ref ECSScaleDownPolicyB  
-            # Dimensions:
-                # - Name: AutoScalingGroupName
-                  # Value: !Ref ECSAutoScalingGroupB
                   
     RequestCountPerTargetLowAlarmB:
         Type: AWS::CloudWatch::Alarm
@@ -860,44 +714,6 @@ Resources:
                   Value: !GetAtt TargetGroupB.TargetGroupFullName
                 - Name: LoadBalancer
                   Value: !GetAtt LoadBalancer.LoadBalancerFullName  
-
-    # NINHighAlarmB:
-        # Type: AWS::CloudWatch::Alarm
-        # Condition: DeployBlue
-        # Properties:
-            # ActionsEnabled: true
-            # ComparisonOperator: GreaterThanOrEqualToThreshold
-            # EvaluationPeriods: 1
-            # MetricName: NetworkIn
-            # Namespace: AWS/EC2
-            # Period: 60
-            # Statistic: Average
-            # Threshold: 150000000
-            # AlarmActions:
-                # - !Ref ASGScaleUpPolicyB
-                # - !Ref ECSScaleUpPolicyB
-            # Dimensions:
-                # - Name: AutoScalingGroupName
-                  # Value: !Ref ECSAutoScalingGroupB
-
-    # NINLowAlarmB:
-        # Type: AWS::CloudWatch::Alarm
-        # Condition: DeployBlue
-        # Properties:
-            # ActionsEnabled: true
-            # ComparisonOperator: LessThanOrEqualToThreshold
-            # EvaluationPeriods: 1
-            # MetricName: NetworkIn
-            # Namespace: AWS/EC2
-            # Period: 60
-            # Statistic: Average
-            # Threshold: 40000000
-            # AlarmActions:
-                # - !Ref ASGScaleDownPolicyB
-                # - !Ref ECSScaleDownPolicyB
-            # Dimensions:
-                # - Name: AutoScalingGroupName
-                  # Value: !Ref ECSAutoScalingGroupB
                   
     # 3. ECS Service and its suite (including Task Definition)
     ServiceB:
