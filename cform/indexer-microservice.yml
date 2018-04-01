@@ -101,6 +101,36 @@ Parameters:
         Type: String
         Default: ""
         
+    RequestCountPerTargetHighThreshold:
+        Description: Holds the number of requests for a container that indicates a high load of work
+        Type: Number
+        Default: 459
+        
+    RequestCountPerTargetLowThreshold:
+        Description: Holds the number of requests for a container that indicates a low load of work
+        Type: Number
+        Default: 81
+        
+    EvaluationPeriodsHigh:
+        Description: Holds the number of evaluation periods for the high request count per target alarm
+        Type: Number
+        Default: 10
+        
+    PeriodsAlarmHigh:
+        Description: Holds the periods (seconds) for the high request count per target alarm
+        Type: Number
+        Default: 60
+        
+    EvaluationPeriodsLow:
+        Description: Holds the number of evaluation periods for the low request count per target alarm
+        Type: Number
+        Default: 15
+    
+    PeriodsAlarmLow:
+        Description: Holds the periods (seconds) for the low request count per target alarm
+        Type: Number
+        Default: 60
+        
 Conditions:
 
     DeployGreen: !Or
@@ -339,50 +369,126 @@ Resources:
                   ScalingAdjustment: -1
             Cooldown: 5
             MetricAggregationType: Average
-            
-    CPUHighAlarmG:
+    
+   
+    RequestCountPerTargetHighAlarmG:
         Type: AWS::CloudWatch::Alarm
         Condition: DeployGreen
         DependsOn:
+            - LoadBalancer
+            - TargetGroupG         
             - ASGScaleUpPolicyG
-            - ECSScaleUpPolicyG
+            - ECSScaleUpPolicyG            
         Properties:
             ActionsEnabled: true
             ComparisonOperator: GreaterThanOrEqualToThreshold
-            EvaluationPeriods: 10
-            MetricName: CPUUtilization
-            Namespace: AWS/EC2
-            Period: 60
-            Statistic: Average
-            Threshold: 75.0
+            EvaluationPeriods: !Ref EvaluationPeriodsHigh
+            MetricName: RequestCountPerTarget
+            Namespace: AWS/ApplicationELB
+            Period: !Ref PeriodsAlarmHigh
+            Statistic: Sum
+            Threshold: !Ref RequestCountPerTargetHighThreshold
             AlarmActions:
                 - !Ref ASGScaleUpPolicyG
                 - !Ref ECSScaleUpPolicyG
             Dimensions:
-                - Name: AutoScalingGroupName
-                  Value: !Ref ECSAutoScalingGroupG
+                - Name: TargetGroup
+                  Value: !GetAtt TargetGroupG.TargetGroupFullName
+                - Name: LoadBalancer
+                  Value: !GetAtt LoadBalancer.LoadBalancerFullName  
+   
+    # CPUHighAlarmG:
+        # Type: AWS::CloudWatch::Alarm
+        # Condition: DeployGreen
+        # DependsOn:
+            # - ASGScaleUpPolicyG
+            # - ECSScaleUpPolicyG
+        # Properties:
+            # ActionsEnabled: true
+            # ComparisonOperator: GreaterThanOrEqualToThreshold
+            # EvaluationPeriods: 10
+            # MetricName: CPUUtilization
+            # Namespace: AWS/EC2
+            # Period: 60
+            # Statistic: Average
+            # Threshold: 75.0
+            # AlarmActions:
+                # - !Ref ASGScaleUpPolicyG
+                # - !Ref ECSScaleUpPolicyG
+            # Dimensions:
+                # - Name: AutoScalingGroupName
+                  # Value: !Ref ECSAutoScalingGroupG      
 
-    CPULowAlarmG:
+      
+    # CPUHighAlarmG:
+        # Type: AWS::CloudWatch::Alarm
+        # Condition: DeployGreen
+        # DependsOn:
+            # - ASGScaleUpPolicyG
+            # - ECSScaleUpPolicyG
+        # Properties:
+            # ActionsEnabled: true
+            # ComparisonOperator: GreaterThanOrEqualToThreshold
+            # EvaluationPeriods: 10
+            # MetricName: CPUUtilization
+            # Namespace: AWS/EC2
+            # Period: 60
+            # Statistic: Average
+            # Threshold: 75.0
+            # AlarmActions:
+                # - !Ref ASGScaleUpPolicyG
+                # - !Ref ECSScaleUpPolicyG
+            # Dimensions:
+                # - Name: AutoScalingGroupName
+                  # Value: !Ref ECSAutoScalingGroupG
+                  
+    RequestCountPerTargetLowAlarmG:
         Type: AWS::CloudWatch::Alarm
         Condition: DeployGreen
         DependsOn:
+            - LoadBalancer
+            - TargetGroupG         
             - ASGScaleDownPolicyG
-            - ECSScaleDownPolicyG
+            - ECSScaleDownPolicyG            
         Properties:
             ActionsEnabled: true
             ComparisonOperator: LessThanOrEqualToThreshold
-            EvaluationPeriods: 15
-            MetricName: CPUUtilization
-            Namespace: AWS/EC2
-            Period: 60
-            Statistic: Average
-            Threshold: 30.0
+            EvaluationPeriods: Ref EvaluationPeriodsLow
+            MetricName: RequestCountPerTarget
+            Namespace: AWS/ApplicationELB
+            Period: !Ref PeriodsAlarmLow
+            Statistic: Sum
+            Threshold: !Ref RequestCountPerTargetLowThreshold
             AlarmActions:
                 - !Ref ASGScaleDownPolicyG
                 - !Ref ECSScaleDownPolicyG
             Dimensions:
-                - Name: AutoScalingGroupName
-                  Value: !Ref ECSAutoScalingGroupG
+                - Name: TargetGroup
+                  Value: !GetAtt TargetGroupG.TargetGroupFullName
+                - Name: LoadBalancer
+                  Value: !GetAtt LoadBalancer.LoadBalancerFullName  
+
+    # CPULowAlarmG:
+        # Type: AWS::CloudWatch::Alarm
+        # Condition: DeployGreen
+        # DependsOn:
+            # - ASGScaleDownPolicyG
+            # - ECSScaleDownPolicyG
+        # Properties:
+            # ActionsEnabled: true
+            # ComparisonOperator: LessThanOrEqualToThreshold
+            # EvaluationPeriods: 15
+            # MetricName: CPUUtilization
+            # Namespace: AWS/EC2
+            # Period: 60
+            # Statistic: Average
+            # Threshold: 30.0
+            # AlarmActions:
+                # - !Ref ASGScaleDownPolicyG
+                # - !Ref ECSScaleDownPolicyG
+            # Dimensions:
+                # - Name: AutoScalingGroupName
+                  # Value: !Ref ECSAutoScalingGroupG
 
     # NINHighAlarmG:
         # Type: AWS::CloudWatch::Alarm
@@ -659,49 +765,101 @@ Resources:
             MetricAggregationType: Average
             
             
-    CPUHighAlarmB:
+    # CPUHighAlarmB:
+        # Type: AWS::CloudWatch::Alarm
+        # Condition: DeployBlue
+        # DependsOn:
+            # - ASGScaleUpPolicyB
+            # - ECSScaleUpPolicyB
+        # Properties:
+            # ActionsEnabled: true
+            # ComparisonOperator: GreaterThanOrEqualToThreshold
+            # EvaluationPeriods: 10
+            # MetricName: CPUUtilization
+            # Namespace: AWS/EC2
+            # Period: 60
+            # Statistic: Average
+            # Threshold: 75.0
+            # AlarmActions:
+                # - !Ref ASGScaleUpPolicyB
+                # - !Ref ECSScaleUpPolicyB
+            # Dimensions:
+                # - Name: AutoScalingGroupName
+                  # Value: !Ref ECSAutoScalingGroupB
+                  
+    RequestCountPerTargetHighAlarmB:
         Type: AWS::CloudWatch::Alarm
         Condition: DeployBlue
         DependsOn:
+            - LoadBalancer
+            - TargetGroupB         
             - ASGScaleUpPolicyB
-            - ECSScaleUpPolicyB
+            - ECSScaleUpPolicyB            
         Properties:
             ActionsEnabled: true
             ComparisonOperator: GreaterThanOrEqualToThreshold
-            EvaluationPeriods: 10
-            MetricName: CPUUtilization
-            Namespace: AWS/EC2
-            Period: 60
-            Statistic: Average
-            Threshold: 75.0
+            EvaluationPeriods: Ref EvaluationPeriodsHigh
+            MetricName: RequestCountPerTarget
+            Namespace: AWS/ApplicationELB
+            Period: !Ref PeriodsAlarmHigh
+            Statistic: Sum
+            Threshold: !Ref RequestCountPerTargetHighThreshold
             AlarmActions:
                 - !Ref ASGScaleUpPolicyB
                 - !Ref ECSScaleUpPolicyB
             Dimensions:
-                - Name: AutoScalingGroupName
-                  Value: !Ref ECSAutoScalingGroupB
+                - Name: TargetGroup
+                  Value: !GetAtt TargetGroupB.TargetGroupFullName
+                - Name: LoadBalancer
+                  Value: !GetAtt LoadBalancer.LoadBalancerFullName  
 
-    CPULowAlarmB:
+    # CPULowAlarmB:
+        # Type: AWS::CloudWatch::Alarm
+        # Condition: DeployBlue
+        # DependsOn:
+            # - ASGScaleDownPolicyB
+            # - ECSScaleDownPolicyB
+        # Properties:
+            # ActionsEnabled: true
+            # ComparisonOperator: LessThanOrEqualToThreshold
+            # EvaluationPeriods: 15
+            # MetricName: CPUUtilization
+            # Namespace: AWS/EC2
+            # Period: 60
+            # Statistic: Average
+            # Threshold: 30.0
+            # AlarmActions:
+                # - !Ref ASGScaleDownPolicyB
+                # - !Ref ECSScaleDownPolicyB  
+            # Dimensions:
+                # - Name: AutoScalingGroupName
+                  # Value: !Ref ECSAutoScalingGroupB
+                  
+    RequestCountPerTargetLowAlarmB:
         Type: AWS::CloudWatch::Alarm
         Condition: DeployBlue
         DependsOn:
+            - LoadBalancer
+            - TargetGroupB         
             - ASGScaleDownPolicyB
-            - ECSScaleDownPolicyB
+            - ECSScaleDownPolicyB            
         Properties:
             ActionsEnabled: true
             ComparisonOperator: LessThanOrEqualToThreshold
-            EvaluationPeriods: 15
-            MetricName: CPUUtilization
-            Namespace: AWS/EC2
-            Period: 60
-            Statistic: Average
-            Threshold: 30.0
+            EvaluationPeriods: Ref EvaluationPeriodsLow
+            MetricName: RequestCountPerTarget
+            Namespace: AWS/ApplicationELB
+            Period: !Ref PeriodsAlarmLow
+            Statistic: Sum
+            Threshold: !Ref RequestCountPerTargetLowThreshold
             AlarmActions:
                 - !Ref ASGScaleDownPolicyB
-                - !Ref ECSScaleDownPolicyB  
+                - !Ref ECSScaleDownPolicyB
             Dimensions:
-                - Name: AutoScalingGroupName
-                  Value: !Ref ECSAutoScalingGroupB
+                - Name: TargetGroup
+                  Value: !GetAtt TargetGroupB.TargetGroupFullName
+                - Name: LoadBalancer
+                  Value: !GetAtt LoadBalancer.LoadBalancerFullName  
 
     # NINHighAlarmB:
         # Type: AWS::CloudWatch::Alarm
