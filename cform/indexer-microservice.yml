@@ -131,6 +131,11 @@ Parameters:
         Type: Number
         Default: 60
         
+    MaxIndexerNodes:
+        Description: Holds the maximum number of indexer nodes
+        Type: Number
+        Default: 100
+        
 Conditions:
 
     DeployGreen: !Or
@@ -239,7 +244,7 @@ Resources:
             VPCZoneIdentifier: !Ref Subnets
             LaunchConfigurationName: !Ref ECSLaunchConfigurationG
             MinSize: 2
-            MaxSize: 100
+            MaxSize: !Ref MaxIndexerNodes
             DesiredCapacity: 2
             HealthCheckType: ELB
             HealthCheckGracePeriod: '30'
@@ -306,7 +311,7 @@ Resources:
         Type: AWS::ApplicationAutoScaling::ScalableTarget
         Condition: DeployGreen
         Properties:
-            MaxCapacity: 100
+            MaxCapacity: !Ref MaxIndexerNodes
             MinCapacity: 2
             ResourceId:
                 Fn::Join:
@@ -529,7 +534,7 @@ Resources:
             VPCZoneIdentifier: !Ref Subnets
             LaunchConfigurationName: !Ref ECSLaunchConfigurationB
             MinSize: 2
-            MaxSize: 100
+            MaxSize: !Ref MaxIndexerNodes
             DesiredCapacity: 2
             HealthCheckType: ELB
             HealthCheckGracePeriod: '30'
@@ -597,7 +602,7 @@ Resources:
         Type: AWS::ApplicationAutoScaling::ScalableTarget
         Condition: DeployBlue
         Properties:
-            MaxCapacity: 100
+            MaxCapacity: !Ref MaxIndexerNodes
             MinCapacity: 2
             ResourceId:
                 Fn::Join:
