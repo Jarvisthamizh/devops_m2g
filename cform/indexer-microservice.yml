@@ -3,6 +3,11 @@ Description: >
 
 Parameters:
 
+    TenantNumber:
+       Description: Tenant number
+       Type: String
+       Default: "000"
+
     Deploy:
         Description: What to deploy GREEN, BLUE, or BOTH (ES update is under construction)
         Type: String
@@ -55,22 +60,19 @@ Parameters:
         Description: Basic AMI Image of the Microservice
         Type: String
 
-    LoadBalancerSecurityGroup:
-        Description: Security Group to use for Application Load Balancer
-        Type: String
+    LoadBalancerSecurityGroups:
+        Description: Security Groups to use for Application Load Balancer
+        Type: List<AWS::EC2::SecurityGroup::Id>
 
-    ECSHostSecurityGroup:
-        Description: Security Group to use for ECS Hosts
-        Type: String
+    LaunchConfigurationSecurityGroups:
+        Description: Security Groups to use for launch configuration in ASG
+        Type: List<AWS::EC2::SecurityGroup::Id>
 
-    ESServiceSecurityGroup:
-        Description: Security Group to use ECS Service
-        Type: String
-
-    ServiceAccessSecurityGroup:
-        Description: Security Group to use ECS Service
-        Type: String
-
+    KeyName: 
+      Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+      Type: AWS::EC2::KeyPair::KeyName
+      ConstraintDescription: must be the name of an existing EC2 KeyPair.
+        
     ECSInstanceRole:
         Description: IAM Role for EC2 for Amazon EC2 Container Service
         Type: String
@@ -90,16 +92,6 @@ Parameters:
         Description: Name of Elastic Search stack
         Type: String
         Default: SM-ElasticSearch-g1-usw1
-
-    ECSHttpProxy:
-        Description: ECS HTTP_PROXY
-        Type: String
-        Default: ""
-
-    ECSNoProxy:
-        Description: ECS NO_PROXY
-        Type: String
-        Default: ""
         
     RequestCountPerTargetHighThreshold:
         Description: Holds the number of requests for a container that indicates a high load of work
@@ -150,35 +142,6 @@ Conditions:
     
 Resources:
 
-    # #--------------------------------------------------------------------------------------
-    # # Security groups for a granular access control to and from tenant DMZ service
-    # #--------------------------------------------------------------------------------------
-    IndexerSecurityGroup:
-        Type: AWS::EC2::SecurityGroup
-        Properties: 
-            VpcId: !Ref HomeVPC
-            GroupName: Role-Shared-Internal-SM-Indexer
-            GroupDescription: granular access control to and from tenant DMZ service
-            SecurityGroupIngress:
-                # Only allow inbound access to ECS from the ELB
-                - SourceSecurityGroupId: !Ref ServiceAccessSecurityGroup
-                  IpProtocol: tcp
-                  FromPort: !Ref IndexerPort
-                  ToPort: !Ref IndexerPort
-                - SourceSecurityGroupId: !Ref ESServiceSecurityGroup
-                  IpProtocol: tcp
-                  FromPort: !Ref IndexerPort
-                  ToPort: !Ref IndexerPort
-            SecurityGroupEgress:
-                # Only allow outbound access to ECS from the ELB
-                - CidrIp: 0.0.0.0/0
-                  IpProtocol: -1
-                  FromPort: -1
-                  ToPort: -1
-            Tags: 
-                - Key: Name
-                  Value: g1-role-shared-internal-sm-indexer
-
     #--------------------------------------------------------------------------------------
     # Load Balancer and its suit
     #--------------------------------------------------------------------------------------
@@ -189,10 +152,7 @@ Resources:
             Name: !Ref AWS::StackName
             Subnets: !Ref Subnets
             Scheme: internal
-            SecurityGroups: 
-                - !Ref IndexerSecurityGroup
-                - !Ref ServiceAccessSecurityGroup
-                - !Ref ESServiceSecurityGroup
+            SecurityGroups: !Ref LoadBalancerSecurityGroups
             Tags:
                 - Key: Name
                   Value: !Ref AWS::StackName
@@ -257,7 +217,7 @@ Resources:
                   Value: !Sub ${AWS::StackName} ECS host
                   PropagateAtLaunch: true
                 - Key: Tenant ID
-                  Value: '00-64'
+                  Value: !Ref TenantNumber
                   PropagateAtLaunch: true
                 - Key: Responsible Party
                   Value: 'Dan.Shaked@genesys.com'
@@ -272,19 +232,13 @@ Resources:
         Properties:
             ImageId:  !Ref ImageID
             InstanceType: m4.xlarge
-            SecurityGroups: 
-                - !Ref IndexerSecurityGroup
-                - !Ref ServiceAccessSecurityGroup
-                - !Ref ESServiceSecurityGroup
+            SecurityGroups: !Ref LaunchConfigurationSecurityGroups
             IamInstanceProfile: !Ref ECSInstanceRole
-            KeyName: stage-voice
+            KeyName: !Ref KeyName
             UserData:
                 "Fn::Base64": !Sub |
                     #!/bin/sh
                     echo "ECS_CLUSTER=${AWS::StackName}" >> /etc/ecs/ecs.config
-
-    # echo "HTTP_PROXY=${ECSHttpProxy}" >> /etc/ecs/ecs.config
-    # echo "NO_PROXY=${ECSNoProxy}" >> /etc/ecs/ecs.config
 
     # 2. Policies and Alarms
     ASGScaleUpPolicyG:
@@ -547,7 +501,7 @@ Resources:
                   Value: !Sub ${AWS::StackName} ECS host
                   PropagateAtLaunch: true
                 - Key: Tenant ID
-                  Value: '00-64'
+                  Value: !Ref TenantNumber
                   PropagateAtLaunch: true
                 - Key: Responsible Party
                   Value: 'Dan.Shaked@genesys.com'
@@ -562,20 +516,13 @@ Resources:
         Properties:
             ImageId:  !Ref ImageID
             InstanceType: m4.xlarge
-            SecurityGroups: 
-                - !Ref IndexerSecurityGroup
-                - !Ref ServiceAccessSecurityGroup
-                - !Ref ESServiceSecurityGroup
+            SecurityGroups: !Ref LaunchConfigurationSecurityGroups
             IamInstanceProfile: !Ref ECSInstanceRole
-            KeyName: stage-voice
+            KeyName: !Ref KeyName
             UserData:
                 "Fn::Base64": !Sub |
                     #!/bin/sh
                     echo "ECS_CLUSTER=${AWS::StackName}" >> /etc/ecs/ecs.config
-
-
-    # echo "HTTP_PROXY=${ECSHttpProxy}" >> /etc/ecs/ecs.config
-    # echo "NO_PROXY=${ECSNoProxy}" >> /etc/ecs/ecs.config
 
     # 2. Policies and Alarms
     ASGScaleUpPolicyB:
