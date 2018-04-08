@@ -1,0 +1,81 @@
+[
+        {
+            "ParameterValue": "BLUE",
+            "ParameterKey": "Deploy"
+        },
+		
+        {
+            "ParameterValue": "5",
+            "ParameterKey": "GreenPriority"
+        },
+        {
+            "ParameterValue": "/api/v1/*",
+            "ParameterKey": "GreenPath"
+        },
+        {
+            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:211",
+            "ParameterKey": "GreenImage"
+        },
+		
+        {
+            "ParameterValue": "2",
+            "ParameterKey": "BluePriority"
+        },
+        {
+            "ParameterValue": "/api/v1/*",
+            "ParameterKey": "BluePath"
+        },
+        {
+            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:211",
+            "ParameterKey": "BlueImage"
+        },
+		
+        {
+            "ParameterValue": "subnet-22f92e4a,subnet-3cf92e54", 
+            "ParameterKey": "Subnets"
+        },
+        {
+            "ParameterValue": "vpc-91fa2df9",
+            "ParameterKey": "HomeVPC"
+        },
+        {
+            "ParameterValue": "ami-0d03f86f",
+            "ParameterKey": "ImageID"
+        },
+        {
+            "ParameterValue": "sg-2bbb4d44,sg-8efa8beb,sg-8fcbc0ed",
+            "ParameterKey": "LoadBalancerSecurityGroups"
+        },
+        {
+            "ParameterValue": "sg-2bbb4d44,sg-8efa8beb,sg-8fcbc0ed",
+            "ParameterKey": "LaunchConfigurationSecurityGroups"
+        },
+        {
+            "ParameterValue": "ecsInstanceRole",
+            "ParameterKey": "ECSInstanceRole"
+        },
+        {
+            "ParameterValue": "ecsServiceRoleCustom",
+            "ParameterKey": "ECSServiceRole"
+        },
+        {
+            "ParameterValue": "80",
+            "ParameterKey": "IndexerPort"
+        },
+        {
+            "ParameterValue": "100",
+            "ParameterKey": "RequestCountPerTargetHighThreshold"
+        },
+        {
+            "ParameterValue": "10",
+            "ParameterKey": "RequestCountPerTargetLowThreshold"
+        },
+        {
+            "ParameterValue": "?",
+            "ParameterKey": "ElasticSearchStack"
+        },
+        {
+          "ParameterValue": "global-automation",
+          "ParameterKey": "KeyName"
+        }
+]
