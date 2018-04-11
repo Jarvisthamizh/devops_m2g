@@ -5,7 +5,7 @@
         },
 		
         {
-            "ParameterValue": "5",
+            "ParameterValue": "2",
             "ParameterKey": "GreenPriority"
         },
         {
@@ -13,12 +13,12 @@
             "ParameterKey": "GreenPath"
         },
         {
-            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:196",
+            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:211",
             "ParameterKey": "GreenImage"
         },
 		
         {
-            "ParameterValue": "2",
+            "ParameterValue": "4",
             "ParameterKey": "BluePriority"
         },
         {
@@ -26,7 +26,7 @@
             "ParameterKey": "BluePath"
         },
         {
-            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:196",
+            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:211",
             "ParameterKey": "BlueImage"
         },
 		

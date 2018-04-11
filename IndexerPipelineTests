@@ -5,23 +5,27 @@
 // --------------------------------------
 def msbuild          	= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" Indexer.sln /m /t:rebuild /p:Configuration=$configuration /p:Platform=\"Any CPU\" /p:ProductVersion=1.0.0.${env.BUILD_NUMBER}" }
 def restore				= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" Indexer.sln /p:Configuration=$configuration /m /t:restore"}
-//def publish				= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" Indexer.sln /p:Configuration=$configuration /m /t:PublishOutput /p:OutputPath=bin\\Release\\PublishOutput"}
-//def publish				= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" Indexer.sln /p:Configuration=$configuration /m /t:publish"}
 def publish				= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" Indexer.sln /m /p:OutputPath=bin\\$configuration\\PublishOutput /t:publish /p:Configuration=$configuration /p:Platform=\"Any CPU\"  "}
-//def workspace        	= 'W:\\lhaikin\\for-aviv\\interop'
 def unittestsdir     	= 'projects\\XUnitTestProject1'
 def unittestOutFile  	= 'xunit.out.xml'
+theworkspace                              = "workspace/${env.JOB_NAME}"
+linux_production_like_node_label          = 'linux-production-like-2'
+linux_production_like_node_name           = linux_production_like_node_label
+publish_artifacts_stash_id                = 'publish-artifacts'
+publish_artifacts_stash_id_2			  = 'dockerfile-artifacts'
 
-// --------------------------------------
-//
-// the pipeline 
-//
-// --------------------------------------
+/*
+--------------------------------------
+
+			the pipeline 
+
+--------------------------------------
+*/
+
 pipeline { 
   agent {
     node {
       label 'builder-WN2012R2-1'
-      //customWorkspace workspace
     }
   }
   
@@ -39,13 +43,11 @@ pipeline {
         step([$class: 'WsCleanup'])
       }
     }
-    
     stage('clone repo') {
       steps {
         checkout scm
       }
     }
-    
     stage('restore-packages') { 
        steps {
 		script {
@@ -53,15 +55,6 @@ pipeline {
 		  }
 		}
     }
-    /*
-    stage('build') { 
-      steps {
-        script {
-          msbuild "debug"
-        }
-      }
-    }
-    */
 	stage('publish') {
 	  steps {
 	    script {
@@ -71,44 +64,91 @@ pipeline {
 	}
 	stage('copy-publish-of-indexer') {
 	  steps {
-		  bat 'xcopy /y /v /e "C:\\Jenkins\\workspace\\indexer-microservice-build-ver-1.2.0\\Indexer\\bin\\release\\PublishOutputpublish" "C:\\Jenkins\\workspace\\indexer-microservice-build-ver-1.2.0\\Indexer\\bin\\release\\PublishOutput"'
-	  }	  
-	}
-	stage('copy-publish-of-ConfigIndexerHost') {
-	  steps {
-		  bat 'xcopy /y /v /e "C:\\Jenkins\\workspace\\indexer-microservice-build-ver-1.2.0\\ConfigIndexerHost\\bin\\release\\PublishOutputpublish" "C:\\Jenkins\\workspace\\indexer-microservice-build-ver-1.2.0\\ConfigIndexerHost\\bin\\release\\PublishOutput"'
-	  }	  
-	}
-	stage('copy-publish-of-IndexerUnitTest') {
-	  steps {
-		  bat 'xcopy /y /v /e "C:\\Jenkins\\workspace\\indexer-microservice-build-ver-1.2.0\\IndexerUnitTest\\bin\\release\\PublishOutputpublish" "C:\\Jenkins\\workspace\\indexer-microservice-build-ver-1.2.0\\IndexerUnitTest\\bin\\release\\PublishOutput"'
+	    //publish files of indexer project
+		bat 'xcopy /y /v /e "C:\\Jenkins\\workspace\\%JOB_NAME%\\Indexer\\bin\\release\\PublishOutputpublish" "C:\\Jenkins\\workspace\\%JOB_NAME%\\Indexer\\bin\\release\\PublishOutput"'
+		//publish files of ConfigIndexerHost project
+		bat 'xcopy /y /v /e "C:\\Jenkins\\workspace\\%JOB_NAME%\\ConfigIndexerHost\\bin\\release\\PublishOutputpublish" "C:\\Jenkins\\workspace\\%JOB_NAME%\\ConfigIndexerHost\\bin\\release\\PublishOutput"'
+		//publish files of IndexerUnitTest project
+		bat 'xcopy /y /v /e "C:\\Jenkins\\workspace\\%JOB_NAME%\\IndexerUnitTest\\bin\\release\\PublishOutputpublish" "C:\\Jenkins\\workspace\\%JOB_NAME%\\IndexerUnitTest\\bin\\release\\PublishOutput"'
 	  }	  
 	}
 	stage('delete-extra-publish-in-workspace') {
 	  steps {
-		  bat 'del /q "C:\\Jenkins\\workspace\\indexer-microservice-build-ver-1.2.0\\Indexer\\bin\\release\\PublishOutputpublish"'
-		  bat 'rmdir /q /s "C:\\Jenkins\\workspace\\indexer-microservice-build-ver-1.2.0\\Indexer\\bin\\release\\PublishOutputpublish"'
-		  bat 'del /q "C:\\Jenkins\\workspace\\indexer-microservice-build-ver-1.2.0\\ConfigIndexerHost\\bin\\release\\PublishOutputpublish"'
-		  bat 'rmdir /q /s "C:\\Jenkins\\workspace\\indexer-microservice-build-ver-1.2.0\\ConfigIndexerHost\\bin\\release\\PublishOutputpublish"'
-		  bat 'del /q "C:\\Jenkins\\workspace\\indexer-microservice-build-ver-1.2.0\\IndexerUnitTest\\bin\\release\\PublishOutputpublish"'
-		  bat 'rmdir /q /s "C:\\Jenkins\\workspace\\indexer-microservice-build-ver-1.2.0\\IndexerUnitTest\\bin\\release\\PublishOutputpublish"'
+		  bat 'del /q "C:\\Jenkins\\workspace\\%JOB_NAME%\\Indexer\\bin\\release\\PublishOutputpublish"'
+		  bat 'rmdir /q /s "C:\\Jenkins\\workspace\\%JOB_NAME%\\Indexer\\bin\\release\\PublishOutputpublish"'
+		  bat 'del /q "C:\\Jenkins\\workspace\\%JOB_NAME%\\ConfigIndexerHost\\bin\\release\\PublishOutputpublish"'
+		  bat 'rmdir /q /s "C:\\Jenkins\\workspace\\%JOB_NAME%\\ConfigIndexerHost\\bin\\release\\PublishOutputpublish"'
+		  bat 'del /q "C:\\Jenkins\\workspace\\%JOB_NAME%\\IndexerUnitTest\\bin\\release\\PublishOutputpublish"'
+		  bat 'rmdir /q /s "C:\\Jenkins\\workspace\\%JOB_NAME%\\IndexerUnitTest\\bin\\release\\PublishOutputpublish"'
 	  }	  
 	}
 	stage('copy-installer-to-x:') {
 	  steps {
-	    bat '"C:\\Program Files (x86)\\NSIS\\makensis.exe" C:\\Jenkins\\workspace\\indexer-microservice-build-ver-1.2.0\\Installer\\indexerInstallerScript.nsi'
-	    bat 'mkdir "X:\\software\\Microservices\\Indexer\\Ver1.0.1\\Build-${env.BUILD_NUMBER}\\"'
-	    bat 'copy "C:\\Jenkins\\workspace\\indexer-microservice-build-ver-1.2.0\\Installer\\Indexer-1.0.0.0-Installer.exe" "X:\\software\\Microservices\\Indexer\\Ver1.0.1\\Build-${env.BUILD_NUMBER}\\"'
+	    bat '"C:\\Program Files (x86)\\NSIS\\makensis.exe" C:\\Jenkins\\workspace\\%JOB_NAME%\\Installer\\indexerInstallerScript.nsi'
+	    bat 'mkdir "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\"'
+	    bat 'copy "C:\\Jenkins\\workspace\\%JOB_NAME%\\Installer\\Indexer-1.0.0.0-Installer.exe" "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\"'
 	   bat 'exit'
 	  }	  
 	}
 	stage('copy-publish-to-x:') {
 	  steps {
-	    bat 'mkdir "X:\\software\\Microservices\\Indexer\\Ver1.0.1\\Build-${env.BUILD_NUMBER}\\PublishOutput"'
-	    bat 'xcopy  /y /v /e "C:\\Jenkins\\workspace\\indexer-microservice-build-ver-1.2.0\\Indexer\\bin\\Release\\PublishOutput\\*" "X:\\software\\Microservices\\Indexer\\Ver1.0.1\\Build-${env.BUILD_NUMBER}\\PublishOutput"'
+	    bat 'mkdir "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\PublishOutput"'
+	    bat 'xcopy  /y /v /e "C:\\Jenkins\\workspace\\%JOB_NAME%\\Indexer\\bin\\Release\\PublishOutput\\*" "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\PublishOutput"'
 	    bat 'exit'
 	  }
 	}
-	stage('docker-build-')
+	stage('copy-Dockerfile-to-x:') {
+	  steps {
+	    bat 'xcopy /y /v ".\\indexer\\Dockerfile" "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%"'
+	  }
+	}
+	stage('copy-artifacts-to-last-build') {
+	  steps {
+	    bat 'xcopy /y /v "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\Indexer-1.0.0.0-Installer.exe" "X:\\software\\Microservices\\Indexer\\akabesatest\\last-build"'
+		bat 'xcopy /y /v /e "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\PublishOutput\\*" "X:\\software\\Microservices\\Indexer\\akabesatest\\last-build\\PublishOutput"'
+	    bat 'exit'
+	  }
+	}
+    stage('stash-artifacts') {
+      steps {
+        stash includes: "Indexer/bin/release/PublishOutput/**/*", name: publish_artifacts_stash_id
+		stash includes: "Indexer/Dockerfile", name: publish_artifacts_stash_id_2
+      }
+    }
+
+    stage('clean-test-workspace') {
+      steps {
+        node(linux_production_like_node_label) {
+          ws(theworkspace) {
+            script {
+              linux_production_like_node_name = NODE_NAME
+            }
+            step([$class: 'WsCleanup'])
+          }
+        }
+      }
+    } 
+    stage('unstash-artifacts') {
+      steps {
+        node(linux_production_like_node_name) {
+          ws(theworkspace) {
+            unstash publish_artifacts_stash_id
+			unstash publish_artifacts_stash_id_2
+          }
+        }
+      }
+    }
+    stage('docker-build') {
+      steps {
+        node(linux_production_like_node_name) {
+          ws(theworkspace) {
+		    script{
+              newImage = docker.build("tlv-docker.us.int.genesyslab.com:5000/indexertest:${env.BUILD_NUMBER}", "./Indexer/")
+			  newImage.push()
+			}
+          }
+        }
+      }
+    }
   }
 }
