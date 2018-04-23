@@ -332,57 +332,57 @@ Resources:
    
     # Alarms with RequestCountPerTarget metric - indexer does not consume CPU nor Memory,
     # so to be able to know when to scale-out/in the service, we monitor the load balancer
-    RequestCountPerTargetHighAlarmG:
-        Type: AWS::CloudWatch::Alarm
-        Condition: DeployGreen
-        DependsOn:
-            - LoadBalancer
-            - TargetGroupG         
-            - ASGScaleUpPolicyG
-            - ECSScaleUpPolicyG            
-        Properties:
-            ActionsEnabled: true
-            ComparisonOperator: GreaterThanOrEqualToThreshold
-            EvaluationPeriods: !Ref EvaluationPeriodsHigh
-            MetricName: RequestCountPerTarget
-            Namespace: AWS/ApplicationELB
-            Period: !Ref PeriodsAlarmHigh
-            Statistic: Sum
-            Threshold: !Ref RequestCountPerTargetHighThreshold
-            AlarmActions:
-                - !Ref ASGScaleUpPolicyG
-                - !Ref ECSScaleUpPolicyG
-            Dimensions:
-                - Name: TargetGroup
-                  Value: !GetAtt TargetGroupG.TargetGroupFullName
-                - Name: LoadBalancer
-                  Value: !GetAtt LoadBalancer.LoadBalancerFullName  
+    # RequestCountPerTargetHighAlarmG:
+        # Type: AWS::CloudWatch::Alarm
+        # Condition: DeployGreen
+        # DependsOn:
+            # - LoadBalancer
+            # - TargetGroupG         
+            # - ASGScaleUpPolicyG
+            # - ECSScaleUpPolicyG            
+        # Properties:
+            # ActionsEnabled: true
+            # ComparisonOperator: GreaterThanOrEqualToThreshold
+            # EvaluationPeriods: !Ref EvaluationPeriodsHigh
+            # MetricName: RequestCountPerTarget
+            # Namespace: AWS/ApplicationELB
+            # Period: !Ref PeriodsAlarmHigh
+            # Statistic: Sum
+            # Threshold: !Ref RequestCountPerTargetHighThreshold
+            # AlarmActions:
+                # - !Ref ASGScaleUpPolicyG
+                # - !Ref ECSScaleUpPolicyG
+            # Dimensions:
+                # - Name: TargetGroup
+                  # Value: !GetAtt TargetGroupG.TargetGroupFullName
+                # - Name: LoadBalancer
+                  # Value: !GetAtt LoadBalancer.LoadBalancerFullName  
                   
-    RequestCountPerTargetLowAlarmG:
-        Type: AWS::CloudWatch::Alarm
-        Condition: DeployGreen
-        DependsOn:
-            - LoadBalancer
-            - TargetGroupG         
-            - ASGScaleDownPolicyG
-            - ECSScaleDownPolicyG            
-        Properties:
-            ActionsEnabled: true
-            ComparisonOperator: LessThanOrEqualToThreshold
-            EvaluationPeriods: !Ref EvaluationPeriodsLow
-            MetricName: RequestCountPerTarget
-            Namespace: AWS/ApplicationELB
-            Period: !Ref PeriodsAlarmLow
-            Statistic: Sum
-            Threshold: !Ref RequestCountPerTargetLowThreshold
-            AlarmActions:
-                - !Ref ASGScaleDownPolicyG
-                - !Ref ECSScaleDownPolicyG
-            Dimensions:
-                - Name: TargetGroup
-                  Value: !GetAtt TargetGroupG.TargetGroupFullName
-                - Name: LoadBalancer
-                  Value: !GetAtt LoadBalancer.LoadBalancerFullName  
+    # RequestCountPerTargetLowAlarmG:
+        # Type: AWS::CloudWatch::Alarm
+        # Condition: DeployGreen
+        # DependsOn:
+            # - LoadBalancer
+            # - TargetGroupG         
+            # - ASGScaleDownPolicyG
+            # - ECSScaleDownPolicyG            
+        # Properties:
+            # ActionsEnabled: true
+            # ComparisonOperator: LessThanOrEqualToThreshold
+            # EvaluationPeriods: !Ref EvaluationPeriodsLow
+            # MetricName: RequestCountPerTarget
+            # Namespace: AWS/ApplicationELB
+            # Period: !Ref PeriodsAlarmLow
+            # Statistic: Sum
+            # Threshold: !Ref RequestCountPerTargetLowThreshold
+            # AlarmActions:
+                # - !Ref ASGScaleDownPolicyG
+                # - !Ref ECSScaleDownPolicyG
+            # Dimensions:
+                # - Name: TargetGroup
+                  # Value: !GetAtt TargetGroupG.TargetGroupFullName
+                # - Name: LoadBalancer
+                  # Value: !GetAtt LoadBalancer.LoadBalancerFullName  
 
     # 3. ECS Service and its suite (including Task Definition)
     ServiceG:
@@ -412,8 +412,8 @@ Resources:
                 - Name:  !Sub ${AWS::StackName}-microservice
                   Essential: true
                   Image: !Ref GreenImage
-                  Memory: 8000
-                  Cpu: 4096
+                  Memory: 15536
+                  Cpu: 3892
                   PortMappings:
                     - ContainerPort: 5000
                       HostPort: !Ref IndexerPort
