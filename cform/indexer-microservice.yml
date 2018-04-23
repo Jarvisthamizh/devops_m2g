@@ -695,8 +695,8 @@ Resources:
                 - Name:  !Sub ${AWS::StackName}-microservice
                   Essential: true
                   Image: !Ref BlueImage
-                  Memory: 8000
-                  Cpu: 4096
+                  Memory: 15536
+                  Cpu: 3892
                   PortMappings:
                     - ContainerPort: 5000
                       HostPort: !Ref IndexerPort
