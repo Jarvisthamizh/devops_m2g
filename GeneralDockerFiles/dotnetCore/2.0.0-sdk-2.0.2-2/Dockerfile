@@ -1,4 +1,4 @@
-FROM ubuntu:14.04
+FROM sdocker-registry.genhtcc.com/centos:7
 
 RUN apt-get update \
     && apt-get upgrade -y\
