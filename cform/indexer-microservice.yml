@@ -91,43 +91,27 @@ Parameters:
     ElasticSearchStack:
         Description: Name of Elastic Search stack
         Type: String
-        Default: SM-ElasticSearch-g1-usw1
-        
-    RequestCountPerTargetHighThreshold:
-        Description: Holds the number of requests for a container that indicates a high load of work
-        Type: Number
-        Default: 459
-        
-    RequestCountPerTargetLowThreshold:
-        Description: Holds the number of requests for a container that indicates a low load of work
-        Type: Number
-        Default: 81
-        
-    EvaluationPeriodsHigh:
-        Description: Holds the number of evaluation periods for the high request count per target alarm
-        Type: Number
-        Default: 10
-        
-    PeriodsAlarmHigh:
-        Description: Holds the periods (seconds) for the high request count per target alarm
-        Type: Number
-        Default: 60
-        
-    EvaluationPeriodsLow:
-        Description: Holds the number of evaluation periods for the low request count per target alarm
-        Type: Number
-        Default: 15
-    
-    PeriodsAlarmLow:
-        Description: Holds the periods (seconds) for the low request count per target alarm
-        Type: Number
-        Default: 60
-        
+        Default: SM-ElasticSearch-g1-usw1            
     MaxIndexerNodes:
         Description: Holds the maximum number of indexer nodes
         Type: Number
         Default: 100
-        
+    ASGDesiredCapacityG:
+        Description: auto scaling group number of starting instances
+        Type: Number
+        Default: 2
+    ASGDesiredCapacityB:
+        Description: auto scaling group number of starting instances
+        Type: Number
+        Default: 2
+    ECSDesiredCountG:
+        Description: ecs number of starting tasks
+        Type: Number
+        Default: 1
+    ECSDesiredCountB:
+        Description: ecs number of starting tasks
+        Type: Number
+        Default: 1
 Conditions:
 
     DeployGreen: !Or
@@ -196,7 +180,7 @@ Resources:
     #--------------------------------------------------------------------------------------
 
     # 1. Auto Scaling Group and its suite
-    ECSAutoScalingGroupG:
+    AutoScalingGroupG:
         Type: AWS::AutoScaling::AutoScalingGroup
         Condition: DeployGreen
         DependsOn: ECSLaunchConfigurationG
@@ -205,7 +189,7 @@ Resources:
             LaunchConfigurationName: !Ref ECSLaunchConfigurationG
             MinSize: 2
             MaxSize: !Ref MaxIndexerNodes
-            DesiredCapacity: 2
+            DesiredCapacity: !Ref ASGDesiredCapacityG
             HealthCheckType: ELB
             HealthCheckGracePeriod: '30'
             MetricsCollection:
@@ -249,7 +233,7 @@ Resources:
             Cooldown: 5
             PolicyType: SimpleScaling
             ScalingAdjustment: 1
-            AutoScalingGroupName: !Ref ECSAutoScalingGroupG
+            AutoScalingGroupName: !Ref AutoScalingGroupG
 
     ASGScaleDownPolicyG:
         Type: AWS::AutoScaling::ScalingPolicy
@@ -259,7 +243,7 @@ Resources:
             Cooldown: 5
             PolicyType: SimpleScaling
             ScalingAdjustment: -1
-            AutoScalingGroupName: !Ref ECSAutoScalingGroupG
+            AutoScalingGroupName: !Ref AutoScalingGroupG
 
     ScalableTargetG:
         Type: AWS::ApplicationAutoScaling::ScalableTarget
@@ -273,7 +257,7 @@ Resources:
                 - - service
                   - !Ref AWS::StackName
                   - Fn::GetAtt:
-                      - ServiceG
+                      - ECSServiceG
                       - Name
             RoleARN: arn:aws:iam::676689269748:role/ecsAutoscaleRole
             ScalableDimension: ecs:service:DesiredCount
@@ -292,7 +276,7 @@ Resources:
             - - service
               - Ref: AWS::StackName
               - Fn::GetAtt:
-                - ServiceG
+                - ECSServiceG
                 - Name
           ScalableDimension: ecs:service:DesiredCount
           ServiceNamespace: ecs
@@ -317,7 +301,7 @@ Resources:
             - - service
               - Ref: AWS::StackName
               - Fn::GetAtt:
-                - ServiceG
+                - ECSServiceG
                 - Name
           ScalableDimension: ecs:service:DesiredCount
           ServiceNamespace: ecs
@@ -328,64 +312,9 @@ Resources:
                   ScalingAdjustment: -1
             Cooldown: 5
             MetricAggregationType: Average
-    
-   
-    # Alarms with RequestCountPerTarget metric - indexer does not consume CPU nor Memory,
-    # so to be able to know when to scale-out/in the service, we monitor the load balancer
-    # RequestCountPerTargetHighAlarmG:
-        # Type: AWS::CloudWatch::Alarm
-        # Condition: DeployGreen
-        # DependsOn:
-            # - LoadBalancer
-            # - TargetGroupG         
-            # - ASGScaleUpPolicyG
-            # - ECSScaleUpPolicyG            
-        # Properties:
-            # ActionsEnabled: true
-            # ComparisonOperator: GreaterThanOrEqualToThreshold
-            # EvaluationPeriods: !Ref EvaluationPeriodsHigh
-            # MetricName: RequestCountPerTarget
-            # Namespace: AWS/ApplicationELB
-            # Period: !Ref PeriodsAlarmHigh
-            # Statistic: Sum
-            # Threshold: !Ref RequestCountPerTargetHighThreshold
-            # AlarmActions:
-                # - !Ref ASGScaleUpPolicyG
-                # - !Ref ECSScaleUpPolicyG
-            # Dimensions:
-                # - Name: TargetGroup
-                  # Value: !GetAtt TargetGroupG.TargetGroupFullName
-                # - Name: LoadBalancer
-                  # Value: !GetAtt LoadBalancer.LoadBalancerFullName  
-                  
-    # RequestCountPerTargetLowAlarmG:
-        # Type: AWS::CloudWatch::Alarm
-        # Condition: DeployGreen
-        # DependsOn:
-            # - LoadBalancer
-            # - TargetGroupG         
-            # - ASGScaleDownPolicyG
-            # - ECSScaleDownPolicyG            
-        # Properties:
-            # ActionsEnabled: true
-            # ComparisonOperator: LessThanOrEqualToThreshold
-            # EvaluationPeriods: !Ref EvaluationPeriodsLow
-            # MetricName: RequestCountPerTarget
-            # Namespace: AWS/ApplicationELB
-            # Period: !Ref PeriodsAlarmLow
-            # Statistic: Sum
-            # Threshold: !Ref RequestCountPerTargetLowThreshold
-            # AlarmActions:
-                # - !Ref ASGScaleDownPolicyG
-                # - !Ref ECSScaleDownPolicyG
-            # Dimensions:
-                # - Name: TargetGroup
-                  # Value: !GetAtt TargetGroupG.TargetGroupFullName
-                # - Name: LoadBalancer
-                  # Value: !GetAtt LoadBalancer.LoadBalancerFullName  
 
     # 3. ECS Service and its suite (including Task Definition)
-    ServiceG:
+    ECSServiceG:
         Type: AWS::ECS::Service
         DependsOn: 
             - ListenerRuleG
@@ -394,7 +323,7 @@ Resources:
         Properties:
             Cluster: !Ref ECSCluster
             Role: !Ref ECSServiceRole
-            DesiredCount: 2
+            DesiredCount: !Ref ECSDesiredCountG
             TaskDefinition: !Ref TaskDefinitionG
             PlacementStrategies :
                 - Type: random
@@ -481,7 +410,7 @@ Resources:
     #--------------------------------------------------------------------------------------
 
     # 1. Auto Scaling Group and its suite
-    ECSAutoScalingGroupB:
+    AutoScalingGroupB:
         Type: AWS::AutoScaling::AutoScalingGroup
         Condition: DeployBlue
         Properties:
@@ -489,7 +418,7 @@ Resources:
             LaunchConfigurationName: !Ref ECSLaunchConfigurationB
             MinSize: 2
             MaxSize: !Ref MaxIndexerNodes
-            DesiredCapacity: 2
+            DesiredCapacity: !Ref ASGDesiredCapacityB
             HealthCheckType: ELB
             HealthCheckGracePeriod: '30'
             MetricsCollection:
@@ -533,7 +462,7 @@ Resources:
             Cooldown: 5
             PolicyType: SimpleScaling
             ScalingAdjustment: 1
-            AutoScalingGroupName: !Ref ECSAutoScalingGroupB
+            AutoScalingGroupName: !Ref AutoScalingGroupB
 
     ASGScaleDownPolicyB:
         Type: AWS::AutoScaling::ScalingPolicy
@@ -543,7 +472,7 @@ Resources:
             Cooldown: 5
             PolicyType: SimpleScaling
             ScalingAdjustment: -1
-            AutoScalingGroupName: !Ref ECSAutoScalingGroupB
+            AutoScalingGroupName: !Ref AutoScalingGroupB
 
     ScalableTargetB:
         Type: AWS::ApplicationAutoScaling::ScalableTarget
@@ -557,7 +486,7 @@ Resources:
                 - - service
                   - !Ref AWS::StackName
                   - Fn::GetAtt:
-                      - ServiceB
+                      - ECSServiceB
                       - Name
             RoleARN: arn:aws:iam::676689269748:role/ecsAutoscaleRole
             ScalableDimension: ecs:service:DesiredCount
@@ -576,7 +505,7 @@ Resources:
             - - service
               - Ref: AWS::StackName
               - Fn::GetAtt:
-                - ServiceB
+                - ECSServiceB
                 - Name
           ScalableDimension: ecs:service:DesiredCount
           ServiceNamespace: ecs
@@ -601,7 +530,7 @@ Resources:
             - - service
               - Ref: AWS::StackName
               - Fn::GetAtt:
-                - ServiceB
+                - ECSServiceB
                 - Name
           ScalableDimension: ecs:service:DesiredCount
           ServiceNamespace: ecs
@@ -612,63 +541,9 @@ Resources:
                   ScalingAdjustment: -1
             Cooldown: 5
             MetricAggregationType: Average
-      
-    # Alarms with RequestCountPerTarget metric - indexer does not consume CPU nor Memory,
-    # so to be able to know when to scale-out/in the service, we monitor the load balancer
-    RequestCountPerTargetHighAlarmB:
-        Type: AWS::CloudWatch::Alarm
-        Condition: DeployBlue
-        DependsOn:
-            - LoadBalancer
-            - TargetGroupB         
-            - ASGScaleUpPolicyB
-            - ECSScaleUpPolicyB            
-        Properties:
-            ActionsEnabled: true
-            ComparisonOperator: GreaterThanOrEqualToThreshold
-            EvaluationPeriods: !Ref EvaluationPeriodsHigh
-            MetricName: RequestCountPerTarget
-            Namespace: AWS/ApplicationELB
-            Period: !Ref PeriodsAlarmHigh
-            Statistic: Sum
-            Threshold: !Ref RequestCountPerTargetHighThreshold
-            AlarmActions:
-                - !Ref ASGScaleUpPolicyB
-                - !Ref ECSScaleUpPolicyB
-            Dimensions:
-                - Name: TargetGroup
-                  Value: !GetAtt TargetGroupB.TargetGroupFullName
-                - Name: LoadBalancer
-                  Value: !GetAtt LoadBalancer.LoadBalancerFullName  
-                  
-    RequestCountPerTargetLowAlarmB:
-        Type: AWS::CloudWatch::Alarm
-        Condition: DeployBlue
-        DependsOn:
-            - LoadBalancer
-            - TargetGroupB         
-            - ASGScaleDownPolicyB
-            - ECSScaleDownPolicyB            
-        Properties:
-            ActionsEnabled: true
-            ComparisonOperator: LessThanOrEqualToThreshold
-            EvaluationPeriods: !Ref EvaluationPeriodsLow
-            MetricName: RequestCountPerTarget
-            Namespace: AWS/ApplicationELB
-            Period: !Ref PeriodsAlarmLow
-            Statistic: Sum
-            Threshold: !Ref RequestCountPerTargetLowThreshold
-            AlarmActions:
-                - !Ref ASGScaleDownPolicyB
-                - !Ref ECSScaleDownPolicyB
-            Dimensions:
-                - Name: TargetGroup
-                  Value: !GetAtt TargetGroupB.TargetGroupFullName
-                - Name: LoadBalancer
-                  Value: !GetAtt LoadBalancer.LoadBalancerFullName  
                   
     # 3. ECS Service and its suite (including Task Definition)
-    ServiceB:
+    ECSServiceB:
         Type: AWS::ECS::Service
         DependsOn: 
             - ListenerRuleB
@@ -677,7 +552,7 @@ Resources:
         Properties:
             Cluster: !Ref ECSCluster
             Role: !Ref ECSServiceRole
-            DesiredCount: 2
+            DesiredCount: !Ref ECSDesiredCountB
             TaskDefinition: !Ref TaskDefinitionB
             PlacementStrategies :
                 - Type: random
