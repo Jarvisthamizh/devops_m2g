@@ -13,7 +13,7 @@
             "ParameterKey": "GreenPath"
         },
         {
-            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:196",
+            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:211",
             "ParameterKey": "GreenImage"
         },
 		
@@ -26,7 +26,7 @@
             "ParameterKey": "BluePath"
         },
         {
-            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:196",
+            "ParameterValue": "sdocker-registry.genhtcc.com/sm/indexer:211",
             "ParameterKey": "BlueImage"
         },
 		
@@ -59,23 +59,27 @@
             "ParameterKey": "ECSServiceRole"
         },
         {
-            "ParameterValue": "8300",
+            "ParameterValue": "80",
             "ParameterKey": "IndexerPort"
         },
         {
-            "ParameterValue": "SM-ElasticSearch-legacy-asp2",
-            "ParameterKey": "ElasticSearchStack"
-        },
-        {
-            "ParameterValue": "6",
+            "ParameterValue": "4",
             "ParameterKey": "ASGDesiredCapacityG"
         },
         {
-            "ParameterValue": "1",
+            "ParameterValue": "3",
             "ParameterKey": "ECSDesiredCountG"
         },
         {
             "ParameterValue": "ami-e1d41c83",
             "ParameterKey": "ImageID"
-        }        
+        },
+        {
+            "ParameterValue": "https://vpc-indexer-es-domain-legacy-bsqlzr7kdsxqi55pfjdmrehixq.ap-southeast-2.es.amazonaws.com",
+            "ParameterKey": "ElasticSearchUrl"
+        },
+        {
+            "ParameterValue": "arn:aws:iam::676689269748:role/ecsAutoscaleRole",
+            "ParameterKey": "ScalableTargetRoleARN"
+        }          
 ]
