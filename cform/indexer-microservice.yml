@@ -88,10 +88,10 @@ Parameters:
         Type: String
         Default: 8084
     
-    ElasticSearchStack:
+    ElasticSearchUrl:
         Description: Name of Elastic Search stack
         Type: String
-        Default: SM-ElasticSearch-g1-usw1            
+        Default: https://vpc-indexer-es-domain-legacy-bsqlzr7kdsxqi55pfjdmrehixq.ap-southeast-2.es.amazonaws.com       
     MaxIndexerNodes:
         Description: Holds the maximum number of indexer nodes
         Type: Number
@@ -99,19 +99,35 @@ Parameters:
     ASGDesiredCapacityG:
         Description: auto scaling group number of starting instances
         Type: Number
-        Default: 2
+        Default: 4
     ASGDesiredCapacityB:
         Description: auto scaling group number of starting instances
         Type: Number
-        Default: 2
+        Default: 4
     ECSDesiredCountG:
         Description: ecs number of starting tasks
         Type: Number
-        Default: 1
+        Default: 3
     ECSDesiredCountB:
         Description: ecs number of starting tasks
         Type: Number
-        Default: 1
+        Default: 3       
+    AutoScaleUpCooldownMins:
+        Description: the number of minutes until the next scale up event will invoke
+        Type: Number
+        Default: 600
+    AutoScaleUpStep:
+        Description: the number of task to increase every scale-up event
+        Type: Number
+        Default: 3
+    AutoScaleDownCooldownMins:
+        Description: the number of minutes until the next scale down event will invoke
+        Type: Number
+        Default: 180       
+    ScalableTargetRoleARN:
+        Description: the role's amazon-resourcename (ARN) for scalable target (AWS::ApplicationAutoScaling::ScalableTarget)
+        Type: String
+        Default: arn:aws:iam::676689269748:role/ecsAutoscaleRole
 Conditions:
 
     DeployGreen: !Or
@@ -187,7 +203,7 @@ Resources:
         Properties:
             VPCZoneIdentifier: !Ref Subnets
             LaunchConfigurationName: !Ref ECSLaunchConfigurationG
-            MinSize: 2
+            MinSize: 4
             MaxSize: !Ref MaxIndexerNodes
             DesiredCapacity: !Ref ASGDesiredCapacityG
             HealthCheckType: ELB
@@ -215,7 +231,8 @@ Resources:
         Condition: DeployGreen
         Properties:
             ImageId:  !Ref ImageID
-            InstanceType: m4.xlarge
+            InstanceType: m4.large
+            #InstanceType: m4.xlarge
             SecurityGroups: !Ref LaunchConfigurationSecurityGroups
             IamInstanceProfile: !Ref ECSInstanceRole
             KeyName: !Ref KeyName
@@ -225,14 +242,63 @@ Resources:
                     echo "ECS_CLUSTER=${AWS::StackName}" >> /etc/ecs/ecs.config
 
     # 2. Policies and Alarms
+    CPUHighAlarmG:
+        Type: AWS::CloudWatch::Alarm
+        Condition: DeployGreen
+        DependsOn:
+            - ASGScaleUpPolicyG
+            - ECSScaleUpPolicyG
+            - ECSServiceG
+        Properties:
+            ActionsEnabled: true
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            EvaluationPeriods: 2
+            MetricName: CPUUtilization
+            Namespace: AWS/ECS
+            Period: 60
+            Statistic: Average
+            Threshold: 60.0
+            AlarmActions:
+                - !Ref ASGScaleUpPolicyG
+                - !Ref ECSScaleUpPolicyG
+            Dimensions:
+              - Name: ClusterName
+                Value: !Ref AWS::StackName
+              - Name: ServiceName
+                Value: !GetAtt ECSServiceG.Name
+    CPULowAlarmG:
+        Type: AWS::CloudWatch::Alarm
+        Condition: DeployGreen
+        DependsOn:
+            - ASGScaleDownPolicyG
+            - ECSScaleDownPolicyG
+            - ECSServiceG
+        Properties:
+            ActionsEnabled: true
+            ComparisonOperator: LessThanThreshold
+            EvaluationPeriods: 5
+            MetricName: CPUUtilization
+            Namespace: AWS/ECS
+            Period: 60
+            Statistic: Average
+            Threshold: 15.0
+            AlarmActions:
+                - !Ref ASGScaleDownPolicyG
+                - !Ref ECSScaleDownPolicyG
+            Dimensions:
+              - Name: ClusterName
+                Value: !Ref AWS::StackName
+              - Name: ServiceName
+                Value: !GetAtt ECSServiceG.Name
+                
     ASGScaleUpPolicyG:
         Type: AWS::AutoScaling::ScalingPolicy
         Condition: DeployGreen
         Properties:
             AdjustmentType: ChangeInCapacity
-            Cooldown: 5
+            Cooldown: !Ref AutoScaleUpCooldownMins
             PolicyType: SimpleScaling
-            ScalingAdjustment: 1
+            ScalingAdjustment: !Ref AutoScaleUpStep
             AutoScalingGroupName: !Ref AutoScalingGroupG
 
     ASGScaleDownPolicyG:
@@ -240,7 +306,7 @@ Resources:
         Condition: DeployGreen
         Properties:
             AdjustmentType: ChangeInCapacity
-            Cooldown: 5
+            Cooldown: !Ref AutoScaleDownCooldownMins
             PolicyType: SimpleScaling
             ScalingAdjustment: -1
             AutoScalingGroupName: !Ref AutoScalingGroupG
@@ -250,7 +316,7 @@ Resources:
         Condition: DeployGreen
         Properties:
             MaxCapacity: !Ref MaxIndexerNodes
-            MinCapacity: 2
+            MinCapacity: 3
             ResourceId:
                 Fn::Join:
                 - "/"
@@ -259,7 +325,7 @@ Resources:
                   - Fn::GetAtt:
                       - ECSServiceG
                       - Name
-            RoleARN: arn:aws:iam::676689269748:role/ecsAutoscaleRole
+            RoleARN: !Ref ScalableTargetRoleARN
             ScalableDimension: ecs:service:DesiredCount
             ServiceNamespace: ecs
   
@@ -284,8 +350,8 @@ Resources:
             AdjustmentType: ChangeInCapacity
             StepAdjustments:
                 - MetricIntervalLowerBound: 0.0
-                  ScalingAdjustment: 1
-            Cooldown: 5
+                  ScalingAdjustment: !Ref AutoScaleUpStep
+            Cooldown: !Ref AutoScaleUpCooldownMins
             MetricAggregationType: Average
 
     ECSScaleDownPolicyG:
@@ -310,7 +376,7 @@ Resources:
             StepAdjustments:
                 - MetricIntervalUpperBound: 0.0
                   ScalingAdjustment: -1
-            Cooldown: 5
+            Cooldown: !Ref AutoScaleDownCooldownMins
             MetricAggregationType: Average
 
     # 3. ECS Service and its suite (including Task Definition)
@@ -341,17 +407,17 @@ Resources:
                 - Name:  !Sub ${AWS::StackName}-microservice
                   Essential: true
                   Image: !Ref GreenImage
-                  Memory: 15536
-                  Cpu: 3892
+                  #Memory: 15536
+                  #Cpu: 4000
+                  Memory: 7900
+                  Cpu: 2048
                   PortMappings:
                     - ContainerPort: 5000
                       HostPort: !Ref IndexerPort
                       Protocol: tcp
                   Environment:
                     - Name: esNodes
-                      Value: 
-                        Fn::ImportValue:
-                            !Sub "${ElasticSearchStack}-URL"
+                      Value: !Ref ElasticSearchUrl
                     - Name: "Serilog:WriteTo:0:Args:path"
                       Value: /mnt/log/indexer/Indexer-
                     - Name: indexAuth
@@ -413,10 +479,11 @@ Resources:
     AutoScalingGroupB:
         Type: AWS::AutoScaling::AutoScalingGroup
         Condition: DeployBlue
+        DependsOn: ECSLaunchConfigurationB
         Properties:
             VPCZoneIdentifier: !Ref Subnets
-            LaunchConfigurationName: !Ref ECSLaunchConfigurationB
-            MinSize: 2
+            LaunchConfigurationName: !Ref ECSLaunchConfigurationG
+            MinSize: 4
             MaxSize: !Ref MaxIndexerNodes
             DesiredCapacity: !Ref ASGDesiredCapacityB
             HealthCheckType: ELB
@@ -444,7 +511,8 @@ Resources:
         Condition: DeployBlue
         Properties:
             ImageId:  !Ref ImageID
-            InstanceType: m4.xlarge
+            InstanceType: m4.large
+            #InstanceType: m4.xlarge
             SecurityGroups: !Ref LaunchConfigurationSecurityGroups
             IamInstanceProfile: !Ref ECSInstanceRole
             KeyName: !Ref KeyName
@@ -454,14 +522,63 @@ Resources:
                     echo "ECS_CLUSTER=${AWS::StackName}" >> /etc/ecs/ecs.config
 
     # 2. Policies and Alarms
+    CPUHighAlarmB:
+        Type: AWS::CloudWatch::Alarm
+        Condition: DeployBlue
+        DependsOn:
+            - ASGScaleUpPolicyB
+            - ECSScaleUpPolicyB
+            - ECSServiceB
+        Properties:
+            ActionsEnabled: true
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            EvaluationPeriods: 2
+            MetricName: CPUUtilization
+            Namespace: AWS/ECS
+            Period: 60
+            Statistic: Average
+            Threshold: 60.0
+            AlarmActions:
+                - !Ref ASGScaleUpPolicyB
+                - !Ref ECSScaleUpPolicyB
+            Dimensions:
+              - Name: ClusterName
+                Value: !Ref AWS::StackName
+              - Name: ServiceName
+                Value: !GetAtt ECSServiceB.Name
+    CPULowAlarmB:
+        Type: AWS::CloudWatch::Alarm
+        Condition: DeployBlue
+        DependsOn:
+            - ASGScaleDownPolicyB
+            - ECSScaleDownPolicyB
+            - ECSServiceB
+        Properties:
+            ActionsEnabled: true
+            ComparisonOperator: LessThanThreshold
+            EvaluationPeriods: 5
+            MetricName: CPUUtilization
+            Namespace: AWS/ECS
+            Period: 60
+            Statistic: Average
+            Threshold: 15.0
+            AlarmActions:
+                - !Ref ASGScaleDownPolicyB
+                - !Ref ECSScaleDownPolicyB
+            Dimensions:
+              - Name: ClusterName
+                Value: !Ref AWS::StackName
+              - Name: ServiceName
+                Value: !GetAtt ECSServiceB.Name
+                
     ASGScaleUpPolicyB:
         Type: AWS::AutoScaling::ScalingPolicy
         Condition: DeployBlue
         Properties:
             AdjustmentType: ChangeInCapacity
-            Cooldown: 5
+            Cooldown: !Ref AutoScaleUpCooldownMins
             PolicyType: SimpleScaling
-            ScalingAdjustment: 1
+            ScalingAdjustment: !Ref AutoScaleUpStep
             AutoScalingGroupName: !Ref AutoScalingGroupB
 
     ASGScaleDownPolicyB:
@@ -469,7 +586,7 @@ Resources:
         Condition: DeployBlue
         Properties:
             AdjustmentType: ChangeInCapacity
-            Cooldown: 5
+            Cooldown: !Ref AutoScaleDownCooldownMins
             PolicyType: SimpleScaling
             ScalingAdjustment: -1
             AutoScalingGroupName: !Ref AutoScalingGroupB
@@ -479,7 +596,7 @@ Resources:
         Condition: DeployBlue
         Properties:
             MaxCapacity: !Ref MaxIndexerNodes
-            MinCapacity: 2
+            MinCapacity: 3
             ResourceId:
                 Fn::Join:
                 - "/"
@@ -488,10 +605,10 @@ Resources:
                   - Fn::GetAtt:
                       - ECSServiceB
                       - Name
-            RoleARN: arn:aws:iam::676689269748:role/ecsAutoscaleRole
+            RoleARN: !Ref ScalableTargetRoleARN
             ScalableDimension: ecs:service:DesiredCount
             ServiceNamespace: ecs
-
+  
     ECSScaleUpPolicyB:
         Type: AWS::ApplicationAutoScaling::ScalingPolicy
         Condition: DeployBlue
@@ -513,8 +630,8 @@ Resources:
             AdjustmentType: ChangeInCapacity
             StepAdjustments:
                 - MetricIntervalLowerBound: 0.0
-                  ScalingAdjustment: 1
-            Cooldown: 5
+                  ScalingAdjustment: !Ref AutoScaleUpStep
+            Cooldown: !Ref AutoScaleUpCooldownMins
             MetricAggregationType: Average
 
     ECSScaleDownPolicyB:
@@ -539,9 +656,9 @@ Resources:
             StepAdjustments:
                 - MetricIntervalUpperBound: 0.0
                   ScalingAdjustment: -1
-            Cooldown: 5
+            Cooldown: !Ref AutoScaleDownCooldownMins
             MetricAggregationType: Average
-                  
+
     # 3. ECS Service and its suite (including Task Definition)
     ECSServiceB:
         Type: AWS::ECS::Service
@@ -570,17 +687,17 @@ Resources:
                 - Name:  !Sub ${AWS::StackName}-microservice
                   Essential: true
                   Image: !Ref BlueImage
-                  Memory: 15536
-                  Cpu: 3892
+                  #Memory: 15536
+                  #Cpu: 4000
+                  Memory: 7900
+                  Cpu: 2048
                   PortMappings:
                     - ContainerPort: 5000
                       HostPort: !Ref IndexerPort
                       Protocol: tcp
                   Environment:
                     - Name: esNodes
-                      Value: 
-                        Fn::ImportValue:
-                            !Sub "${ElasticSearchStack}-URL"
+                      Value: !Ref ElasticSearchUrl
                     - Name: "Serilog:WriteTo:0:Args:path"
                       Value: /mnt/log/indexer/Indexer-
                     - Name: indexAuth

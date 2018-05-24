@@ -3,37 +3,45 @@
 // global reusable definitions
 //
 // --------------------------------------
+def msbuild          	= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" Indexer.sln /m /t:rebuild /p:Configuration=$configuration /p:Platform=\"Any CPU\" /p:ProductVersion=1.0.0.${env.BUILD_NUMBER}" }
+def restore				= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" Indexer.sln /p:Configuration=$configuration /m /t:restore"}
+def publish				= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" Indexer.sln /m /p:OutputPath=bin\\$configuration\\PublishOutput /t:publish /p:Configuration=$configuration /p:Platform=\"Any CPU\"  "}
+def unittestsdir     	= 'projects\\XUnitTestProject1'
+def unittestOutFile  	= 'xunit.out.xml'
+theworkspace                              = "workspace/${env.JOB_NAME}"
+linux_production_like_node_label          = 'linux-production-like-2'
+linux_production_like_node_name           = linux_production_like_node_label
+publish_artifacts_stash_id                = 'publish-artifacts'
+publish_artifacts_stash_id_2			  = 'dockerfile-artifacts'
 
-// Define build variables
 
-def major_version_number				= "1.0.1"
+// Define build + installer variables
 
-//def indexerProjPaths					= ["%WORKSPACE%\\Indexer\\bin\\release\\PublishOutputpublish", "%WORKSPACE%\\Indexer\\bin\\release\\PublishOutput"]
-//def indexerUnitTestProjPaths			= ["%WORKSPACE%\\IndexerUnitTest\\bin\\release\\PublishOutputpublish", "%WORKSPACE%\\IndexerUnitTest\\bin\\release\\PublishOutput"]
-//def indexerFullTestProjPaths			= ["%WORKSPACE%\\IndexerFullTest\\bin\\release\\PublishOutputpublish", "%WORKSPACE%\\IndexerFullTest\\bin\\release\\PublishOutput"]
-//def indexerConfigHostProjPaths		= ["%WORKSPACE%\\ConfigIndexerHost\\bin\\release\\PublishOutputpublish", "%WORKSPACE%\\ConfigIndexerHost\\bin\\release\\PublishOutput"]
+def major_version_number				= '1.0.1'
 
-def build_user							= "utopy_build"
+def build_user							= 'utopy_build'
 def indexerTestProjDirs					= ['%WORKSPACE%\\IndexerUnitTest', '%WORKSPACE%\\IndexerFullTest']
-def indexerPublishOutputDir				= "${indexerTestProjDirs[0]}\\bin\\Release\\PublishOutput"
+def indexerIndexerProjDir				= '%WORKSPACE%\\Indexer'
+def indexerPublishOutputDir				= "$indexerIndexerProjDir\\bin\\Release\\PublishOutput\\*"
 
-def indexerArtifactsFolder				= ["X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%", "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\PublishOutput","X:\\software\\Microservices\\Indexer\\akabesatest\\last-build"]
-def installer_name						= "Indexer-1.0.0.0-Installer.exe"
+def indexerArtifactsFolder				= ["X:\\software\\Microservices\\Indexer\\akabesaTest\\Build-%BUILD_NUMBER%", 		"X:\\software\\Microservices\\Indexer\\akabesaTest\\Build-%BUILD_NUMBER%\\PublishOutput","X:\\software\\Microservices\\Indexer\\akabesaTest"]
+def installer_name						= "Indexer-$major_version_number.${env.BUILD_NUMBER}-Installer.exe"
 def indexerInstallerPath				= "%WORKSPACE%\\Installer\\$installer_name"
+def indexerInstallerScript				= "%WORKSPACE%\\Installer\\indexerInstallerScript.nsi"
 
-def docker_file_path					= "${env.WORKSPACE}\\Indexer\\Dockerfile"
+def docker_file_path					= "%WORKSPACE%\\Indexer\\Dockerfile"
 def docker_registry_tag					= "tlv-docker.us.int.genesyslab.com:5000/indexertest:${env.BUILD_NUMBER}"
 
 // Define tests variables
 
-def unittest_indexer_outfile   	    	= "unittest_indexer_out.xml"
-def fulltest_indexer_outfile   	    	= "fulltest_indexer_out.xml"
+def unittest_indexer_outfile   	    	= '\"unittest_indexer_out.xml\"'
+def fulltest_indexer_outfile   	    	= '\"fulltest_indexer_out.xml\"'
 
-def unittest_indexer_opencover_results  = '${indexerTestProjDirs[0]}\\unittest_opencover_results.xml'
-def fulltest_indexer_opencover_results  = '${indexerTestProjDirs[1]}\\fulltest_opencover_results.xml'
+def unittest_indexer_opencover_results	= "${indexerTestProjDirs[0]}\\unittest_opencover_results.xml"
+def fulltest_indexer_opencover_results	= "${indexerTestProjDirs[1]}\\fulltest_opencover_results.xml"
 
-def unittest_cobertura_outfile			= "indexerTestProjDirs[0]\\cobertura_results.xml"
-def fulltest_cobertura_outfile			= "indexerTestProjDirs[1]\\cobertura_results.xml"
+def unittest_cobertura_outfile		 	= "${indexerTestProjDirs[0]}\\cobertura_results.xml"
+def fulltest_cobertura_outfile			= "${indexerTestProjDirs[1]}\\cobertura_results.xml"
 
 // Define one-liner-scripts
 
@@ -41,26 +49,29 @@ def msbuild          					= { configuration -> bat "\"${tool 'msbuildWinWorker2'
 def restore								= { -> bat "\"${tool 'msbuildWinWorker2'}\" Indexer.sln /m /t:restore"}
 def publish								= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" Indexer.sln /m /p:Configuration=$configuration /t:publish /p:Platform=\"Any CPU\" /p:PublishDir=bin\\$configuration\\PublishOutput /p:Version=$major_version_number.${env.BUILD_NUMBER}"}
 
-def copyPublishFiles					= { sourcepath,destpath -> bat "xcopy /y /v /e $sourcepath $destpath"}
-def rmdirPublishFolders					= { path -> bat "rmdir /q /s $path"}
+def xCopyPublishFiles					= { sourcepath,destpath -> bat "xcopy /y /v /e $sourcepath $destpath"}
+def copyPublishFiles					= { sourcepath,destpath -> bat "copy $sourcepath $destpath"}
+def mkdirPublishPath					= { path -> bat "mkdir $path"}
+def verifyLastBuildExistsbat			= { path -> bat "IF EXIST $path\\last-build (rmdir $path\\last-build)"}
+def mklinkLastBuild						= { path1,path2 -> bat "cd /d $path1 && mklink /d last-build $path2"}
 
-def openCoverWithXunit					= { project_name,outfile,opencover_results_file -> bat "c:\\Users\\utopy_build\\.nuget\\packages\\opencover\\4.6.519\\tools\\OpenCover.Console.exe -register:$build_user -target:dotnet.exe -targetdir:$project_name -targetargs:\"xunit -fxversion 2.0.3 -nobuild -xml $outfile -configuration \"debug\"\" -returntargetcode -oldStyle -output:$opencover_results_file " }
+def openCoverWithXunit					= { project_name,outfile,opencover_results_file -> bat "c:\\Users\\$build_user\\.nuget\\packages\\opencover\\4.6.519\\tools\\OpenCover.Console.exe -register:$build_user -target:dotnet.exe -targetdir:$project_name -targetargs:\"xunit -fxversion 2.0.3 -nobuild -xml $outfile -configuration \"debug\"\" -returntargetcode -oldStyle   -output:$opencover_results_file " }
+def openCoverToCobertura				= { opencover_results_file,cobertura_outfile -> bat "c:\\Users\\utopy_build\\.nuget\\packages\\OpenCoverToCoberturaConverter\\0.2.6\\tools\\OpenCoverToCoberturaConverter.exe -input:$opencover_results_file -output:$cobertura_outfile "}
 
-def openCoverToCobertura				= { opencover_results_file,cobertura_outfile -> bat "c:\\Users\\utopy_build\\.nuget\\packages\\OpenCoverToCoberturaConverter\\0.2.6\\tools\\OpenCoverToCoberturaConverter.exe -input:$opencover_results_file -output:$cobertura_outfile "} 
+def makeInstallerWithNsis				= {path -> bat "\"C:\\Program Files (x86)\\NSIS\\makensis.exe\" /DPRODUCT_VERSION=$major_version_number /DBUILD=${env.BUILD_NUMBER} $path"}
 
-
-def indexerUnitTest_openCover			= { -> bat "c:\\Users\\utopy_build\\.nuget\\packages\\opencover\\4.6.519\\tools\\OpenCover.Console.exe -register:utopy_build  -target:dotnet.exe -targetdir:%WORKSPACE%\\IndexerUnitTest -targetargs:\"xunit -fxversion 2.0.3 -nobuild -xml \"unittest_indexer_out.xml\" -configuration \"debug\"\" -returntargetcode -oldStyle   -output:%WORKSPACE%\\IndexerUnitTest\\opencover_results.xml" }
-def indexerFullTest_openCover			= { -> bat "c:\\Users\\utopy_build\\.nuget\\packages\\opencover\\4.6.519\\tools\\OpenCover.Console.exe -register:utopy_build  -target:dotnet.exe -targetdir:%WORKSPACE%\\IndexerFullTest -targetargs:\"xunit -fxversion 2.0.3 -nobuild -xml \"fulltest_indexer_out.xml\" -configuration \"debug\"\" -returntargetcode -oldStyle   -output:%WORKSPACE%\\IndexerFullTest\\opencover_results.xml" }
-
-def indexerUnitTest_openCoverToCobertura= { -> bat "c:\\Users\\utopy_build\\.nuget\\packages\\OpenCoverToCoberturaConverter\\0.2.6\\tools\\OpenCoverToCoberturaConverter.exe -input:%WORKSPACE%\\IndexerUnitTest\\opencover_results.xml -output:%WORKSPACE%\\IndexerUnitTest\\cobertura_results.xml"}
-def indexerFullTest_openCoverToCobertura= { -> bat "c:\\Users\\utopy_build\\.nuget\\packages\\OpenCoverToCoberturaConverter\\0.2.6\\tools\\OpenCoverToCoberturaConverter.exe -input:%WORKSPACE%\\IndexerFullTest\\opencover_results.xml -output:%WORKSPACE%\\IndexerFullTest\\cobertura_results.xml"}
 
 // Define Jenkins environment related variables
 
+windows_not_within_docker_node_label    = 'builder-WN2012R2-1'
 linux_not_within_docker_node_label    	= 'linux-node-not-within-docker'
 linux_not_within_docker_node_name     	= linux_not_within_docker_node_label
 publish_artifacts_stash_id          	= 'publish-artifacts'
 dockerfile_artifacts_stash_id			= 'dockerfile-artifacts'
+
+
+
+
 
 
 
@@ -76,11 +87,13 @@ pipeline {
   agent {
     node {
       label 'builder-WN2012R2-1'
+      label windows_not_within_docker_node_label
     }
   }
   
   options {
     skipDefaultCheckout true
+    timeout(time: 1, unit: 'HOURS') 
     timeout(time: 30, unit: 'MINUTES') 
     timestamps()
   }
@@ -101,113 +114,170 @@ pipeline {
     stage('restore-packages') { 
        steps {
 		script {
+		  restore "release"
 		  restore()
 		  }
 		}
     }
+	stage('publish') {
 	stage('build-debug') {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	  steps {
 	    script {
+		  publish "release"
 		  msbuild "debug"
-		  //bat "echo $indexerTestProjDirs[0]" - printed  [c:\jenkins\workspace\IndexerPipelineTests@2\IndexerUnitTest, c:\jenkins\workspace\IndexerPipelineTests@2\IndexerFullTest][0]
-		  //bat "echo indexerTestProjDirs[0]" - printed indexerTestProjDirs[0]
-		  bat "echo ${indexerTestProjDirs[0]}"
-		  //printed c:\jenkins\workspace\IndexerPipelineTests@2\IndexerUnitTest
 		}
 	  }	  
 	}
+	stage('copy-publish-of-indexer') {
+
     stage('run-unit-tests-and-code-coverage') {
       steps {
         script {
-          //indexerUnitTest_openCover()
-		  openCoverWithXunit(indexerTestProjDirs[0],$unittest_indexer_outfile,$unittest_indexer_opencover_results)
-		  //indexerUnitTest_openCoverToCobertura()
-		  openCoverToCobertura($unittest_indexer_opencover_results,$unittest_cobertura_outfile)
+		  openCoverWithXunit(indexerTestProjDirs[0],unittest_indexer_outfile,unittest_indexer_opencover_results)
+		  openCoverToCobertura(unittest_indexer_opencover_results,unittest_cobertura_outfile)
         }
       }
     }
 	stage('run-full-tests-and-code-coverage') {
       steps {
         script {
-          //indexerFullTest_openCover()
-		  openCoverWithXunit(indexerTestProjDirs[1],$fulltest_indexer_outfile,$fulltest_indexer_opencover_results)
-		  //indexerFullTest_openCoverToCobertura()
-		  openCoverToCobertura($fulltest_indexer_opencover_results,$fulltest_cobertura_outfile)
+		  openCoverWithXunit(indexerTestProjDirs[1],fulltest_indexer_outfile,fulltest_indexer_opencover_results)
+		  openCoverToCobertura(fulltest_indexer_opencover_results,fulltest_cobertura_outfile)
         }
       }
     }
 	stage('publish') {
 	  steps {
+	    //publish files of indexer project
+		bat 'xcopy /y /v /e "C:\\Jenkins\\workspace\\%JOB_NAME%\\Indexer\\bin\\release\\PublishOutputpublish" "C:\\Jenkins\\workspace\\%JOB_NAME%\\Indexer\\bin\\release\\PublishOutput"'
+		//publish files of ConfigIndexerHost project
+		bat 'xcopy /y /v /e "C:\\Jenkins\\workspace\\%JOB_NAME%\\ConfigIndexerHost\\bin\\release\\PublishOutputpublish" "C:\\Jenkins\\workspace\\%JOB_NAME%\\ConfigIndexerHost\\bin\\release\\PublishOutput"'
+		//publish files of IndexerUnitTest project
+		bat 'xcopy /y /v /e "C:\\Jenkins\\workspace\\%JOB_NAME%\\IndexerUnitTest\\bin\\release\\PublishOutputpublish" "C:\\Jenkins\\workspace\\%JOB_NAME%\\IndexerUnitTest\\bin\\release\\PublishOutput"'
 	    script {
 		  publish "release"
 		}
+
+
+
 	  }	  
 	}
-	/*
-	stage('copy-publish-files-of-indexer') {
-	  steps {
-		script {
-		   copyPublishFiles(indexerProjPaths[0],indexerProjPaths[1])
-		   copyPublishFiles(indexerUnitTestProjPaths[0],indexerUnitTestProjPaths[1])
-		   copyPublishFiles(indexerFullTestProjPaths[0],indexerFullTestProjPaths[1])
-		   copyPublishFiles(indexerConfigHostProjPaths[0],indexerConfigHostProjPaths[1])
-		}
-	  }	  
-	}
-	stage('delete-extra-publish-dir-in-workspace') {
-	  steps {
-	    script {
-		  delPublishFiles(indexerProjPaths[0]) 
-		  delPublishFiles(indexerUnitTestProjPaths[0])
-		  delPublishFiles(indexerFullTestProjPaths[0])
-		  delPublishFiles(indexerConfigHostProjPaths[0])
-		  rmdirPublishFolders(indexerProjPaths[0]) 
-		  rmdirPublishFolders(indexerUnitTestProjPaths[0]) 
-		  rmdirPublishFolders(indexerFullTestProjPaths[0])
-		  rmdirPublishFolders(indexerConfigHostProjPaths[0]) 
-		}
-	  }	  
-	}
-	*/
+	stage('delete-extra-publish-in-workspace') {
 	stage('create-indexer-installer') {
 	  steps {
-		bat "\"C:\\Program Files (x86)\\NSIS\\makensis.exe\" ${env.WORKSPACE}\\Installer\\indexerInstallerScript.nsi"
+		  bat 'del /q "C:\\Jenkins\\workspace\\%JOB_NAME%\\Indexer\\bin\\release\\PublishOutputpublish"'
+		  bat 'rmdir /q /s "C:\\Jenkins\\workspace\\%JOB_NAME%\\Indexer\\bin\\release\\PublishOutputpublish"'
+		  bat 'del /q "C:\\Jenkins\\workspace\\%JOB_NAME%\\ConfigIndexerHost\\bin\\release\\PublishOutputpublish"'
+		  bat 'rmdir /q /s "C:\\Jenkins\\workspace\\%JOB_NAME%\\ConfigIndexerHost\\bin\\release\\PublishOutputpublish"'
+		  bat 'del /q "C:\\Jenkins\\workspace\\%JOB_NAME%\\IndexerUnitTest\\bin\\release\\PublishOutputpublish"'
+		  bat 'rmdir /q /s "C:\\Jenkins\\workspace\\%JOB_NAME%\\IndexerUnitTest\\bin\\release\\PublishOutputpublish"'
+		  script {
+			  makeInstallerWithNsis(indexerInstallerScript)
+		  }
+
+
+
+
+
+
+
 	  }	  
 	}
+	stage('copy-installer-to-x:') {
 	stage('move-installer-to-x:') {
+
 	  steps {
-	    bat "mkdir ${indexerArtifactsFolder[0]}"
-	    //bat "copy \"%WORKSPACE%\\Installer\\$installer_name\" ${indexerArtifactsFolder[0]}"
-		script {copyPublishFiles($indexerInstallerPath, ${indexerArtifactsFolder[0]})}
+	    bat '"C:\\Program Files (x86)\\NSIS\\makensis.exe" C:\\Jenkins\\workspace\\%JOB_NAME%\\Installer\\indexerInstallerScript.nsi'
+	    bat 'mkdir "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\"'
+	    bat 'copy "C:\\Jenkins\\workspace\\%JOB_NAME%\\Installer\\Indexer-1.0.0.0-Installer.exe" "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\"'
+	   bat 'exit'
+	  }	  
+		script {
+			mkdirPublishPath(indexerArtifactsFolder[0])
+			xCopyPublishFiles(indexerInstallerPath,indexerArtifactsFolder[0])
+		}
 	  }
 	}
 	stage('copy-publish-to-x:') {
 	  steps {
-	    bat "mkdir \"${indexerArtifactsFolder[1]}\" "
-	    //bat "xcopy  /y /v /e ${env.WORKSPACE}\\Indexer\\bin\\Release\\PublishOutput\\* \"${indexerArtifactsFolder[1]}\" "
-		script{copyPublishFiles($indexerPublishOutputDir,indexerArtifactsFolder[1])}
-	  }
-	}
-	stage('copy-Dockerfile-to-x:') {
-	  steps {
-	    //bat "xcopy /y /v ${env.WORKSPACE}\\Indexer\\Dockerfile ${indexerArtifactsFolder[0]}"
-		script{copyPublishFiles($docker_file_path, indexerArtifactsFolder[0])}
-	  }
-	}
-	stage('copy-artifacts-to-last-build') {
-	  steps {
+	    bat 'mkdir "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\PublishOutput"'
+	    bat 'xcopy  /y /v /e "C:\\Jenkins\\workspace\\%JOB_NAME%\\Indexer\\bin\\Release\\PublishOutput\\*" "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\PublishOutput"'
+	    bat 'exit'
 		script {
-		  copyPublishFiles("${indexerArtifactsFolder[0]}\\$installer_name",indexerArtifactsFolder[2])
-		  copyPublishFiles("${indexerArtifactsFolder[1]}\\*","${indexerArtifactsFolder[2]}\\PublishOutput")
+			mkdirPublishPath(indexerArtifactsFolder[1])
+			xCopyPublishFiles(indexerPublishOutputDir,indexerArtifactsFolder[1])
 		}
 	  }
 	}
+
+	stage('copy-Dockerfile-to-x:') {
+	  steps {
+	    bat 'xcopy /y /v ".\\indexer\\Dockerfile" "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%"'
+
+		script {
+			copyPublishFiles(docker_file_path, indexerArtifactsFolder[0])
+		}
+	  }
+	}
+	stage('verify-last-build-exists'){
+		steps {
+			script {
+				//bat "IF EXIST indexerArtifactsFolder[0]\\last-build (rmdir indexerArtifactsFolder[0]\\last-build)"
+				verifyLastBuildExistsbat(indexerArtifactsFolder[2])
+			}
+		}
+	}
+	stage('copy-artifacts-to-last-build') {
+	  steps {
+	    bat 'xcopy /y /v "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\Indexer-1.0.0.0-Installer.exe" "X:\\software\\Microservices\\Indexer\\akabesatest\\last-build"'
+		bat 'xcopy /y /v /e "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\PublishOutput\\*" "X:\\software\\Microservices\\Indexer\\akabesatest\\last-build\\PublishOutput"'
+	    bat 'exit'
+		script {
+		  mklinkLastBuild(indexerArtifactsFolder[2],indexerArtifactsFolder[0])
+		  //copyPublishFiles("${indexerArtifactsFolder[0]}\\$installer_name",indexerArtifactsFolder[2])
+		  //xCopyPublishFiles("${indexerArtifactsFolder[1]}\\*","${indexerArtifactsFolder[2]}\\PublishOutput")
+		}
+	  }
+	}
+    stage('generate-code-coverage-report'){
     stage('generate-code-coverage-report-for-unit-tests'){
       steps {
         script {
           cobertura autoUpdateHealth: false, 
           autoUpdateStability: false, 
-          coberturaReportFile: "%WORKSPACE%\\IndexerUnitTest\\cobertura_results.xml", 
+          coberturaReportFile: "$cobertura_outfile", 
+          coberturaReportFile: "IndexerUnitTest\\cobertura_results.xml", 
           conditionalCoverageTargets: '70, 0, 0', 
           failUnhealthy: false, 
           failUnstable: false, 
@@ -220,12 +290,17 @@ pipeline {
         }
       }
     }
+
+
+
+
+
     stage('generate-code-coverage-report-for-full-tests'){
       steps {
         script {
           cobertura autoUpdateHealth: false, 
           autoUpdateStability: false, 
-          coberturaReportFile: "%WORKSPACE%\\IndexerFullTest\\cobertura_results.xml", 
+          coberturaReportFile: "IndexerFullTest\\cobertura_results.xml", 
           conditionalCoverageTargets: '70, 0, 0', 
           failUnhealthy: false, 
           failUnstable: false, 
@@ -241,15 +316,20 @@ pipeline {
     stage('stash-artifacts') {
       steps {
         stash includes: "Indexer/bin/release/PublishOutput/**/*", name: publish_artifacts_stash_id
+		stash includes: "Indexer/Dockerfile", name: publish_artifacts_stash_id_2
+        stash includes: "Indexer/bin/Release/PublishOutput/**/*", name: publish_artifacts_stash_id
 		stash includes: "Indexer/Dockerfile", name: dockerfile_artifacts_stash_id
       }
     }
 
     stage('clean-test-workspace') {
       steps {
+        node(linux_production_like_node_label) {
+          ws(theworkspace) {
         node(linux_not_within_docker_node_label) {
           ws("%WORKSPACE") {
             script {
+              linux_production_like_node_name = NODE_NAME
               linux_not_within_docker_node_name = NODE_NAME
             }
             step([$class: 'WsCleanup'])
@@ -259,9 +339,12 @@ pipeline {
     } 
     stage('unstash-artifacts') {
       steps {
+        node(linux_production_like_node_name) {
+          ws(theworkspace) {
         node(linux_not_within_docker_node_name) {
           ws("%WORKSPACE") {
             unstash publish_artifacts_stash_id
+			unstash publish_artifacts_stash_id_2
 			unstash dockerfile_artifacts_stash_id
           }
         }
@@ -269,9 +352,12 @@ pipeline {
     }
     stage('docker-build') {
       steps {
+        node(linux_production_like_node_name) {
+          ws(theworkspace) {
         node(linux_not_within_docker_node_name) {
           ws("%WORKSPACE") {
 		    script{
+              newImage = docker.build("tlv-docker.us.int.genesyslab.com:5000/indexertest:${env.BUILD_NUMBER}", "./Indexer/")
               newImage = docker.build("$docker_registry_tag", "./Indexer/")
 			  newImage.push()
 			}
