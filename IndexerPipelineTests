@@ -4,7 +4,6 @@
 //
 // --------------------------------------
 def msbuild          	= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" Indexer.sln /m /t:rebuild /p:Configuration=$configuration /p:Platform=\"Any CPU\" /p:ProductVersion=1.0.0.${env.BUILD_NUMBER}" }
-def restore				= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" Indexer.sln /p:Configuration=$configuration /m /t:restore"}
 def publish				= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" Indexer.sln /m /p:OutputPath=bin\\$configuration\\PublishOutput /t:publish /p:Configuration=$configuration /p:Platform=\"Any CPU\"  "}
 def unittestsdir     	= 'projects\\XUnitTestProject1'
 def unittestOutFile  	= 'xunit.out.xml'
@@ -13,6 +12,7 @@ linux_production_like_node_label          = 'linux-production-like-2'
 linux_production_like_node_name           = linux_production_like_node_label
 publish_artifacts_stash_id                = 'publish-artifacts'
 publish_artifacts_stash_id_2			  = 'dockerfile-artifacts'
+
 
 
 // Define build + installer variables
@@ -69,12 +69,6 @@ linux_not_within_docker_node_name     	= linux_not_within_docker_node_label
 publish_artifacts_stash_id          	= 'publish-artifacts'
 dockerfile_artifacts_stash_id			= 'dockerfile-artifacts'
 
-
-
-
-
-
-
 /*
 --------------------------------------
 
@@ -86,14 +80,12 @@ dockerfile_artifacts_stash_id			= 'dockerfile-artifacts'
 pipeline { 
   agent {
     node {
-      label 'builder-WN2012R2-1'
       label windows_not_within_docker_node_label
     }
   }
   
   options {
     skipDefaultCheckout true
-    timeout(time: 1, unit: 'HOURS') 
     timeout(time: 30, unit: 'MINUTES') 
     timestamps()
   }
@@ -114,53 +106,17 @@ pipeline {
     stage('restore-packages') { 
        steps {
 		script {
-		  restore "release"
 		  restore()
 		  }
 		}
     }
-	stage('publish') {
 	stage('build-debug') {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	  steps {
 	    script {
-		  publish "release"
 		  msbuild "debug"
 		}
 	  }	  
 	}
-	stage('copy-publish-of-indexer') {
-
     stage('run-unit-tests-and-code-coverage') {
       steps {
         script {
@@ -179,50 +135,20 @@ pipeline {
     }
 	stage('publish') {
 	  steps {
-	    //publish files of indexer project
-		bat 'xcopy /y /v /e "C:\\Jenkins\\workspace\\%JOB_NAME%\\Indexer\\bin\\release\\PublishOutputpublish" "C:\\Jenkins\\workspace\\%JOB_NAME%\\Indexer\\bin\\release\\PublishOutput"'
-		//publish files of ConfigIndexerHost project
-		bat 'xcopy /y /v /e "C:\\Jenkins\\workspace\\%JOB_NAME%\\ConfigIndexerHost\\bin\\release\\PublishOutputpublish" "C:\\Jenkins\\workspace\\%JOB_NAME%\\ConfigIndexerHost\\bin\\release\\PublishOutput"'
-		//publish files of IndexerUnitTest project
-		bat 'xcopy /y /v /e "C:\\Jenkins\\workspace\\%JOB_NAME%\\IndexerUnitTest\\bin\\release\\PublishOutputpublish" "C:\\Jenkins\\workspace\\%JOB_NAME%\\IndexerUnitTest\\bin\\release\\PublishOutput"'
 	    script {
 		  publish "release"
 		}
-
-
-
 	  }	  
 	}
-	stage('delete-extra-publish-in-workspace') {
 	stage('create-indexer-installer') {
 	  steps {
-		  bat 'del /q "C:\\Jenkins\\workspace\\%JOB_NAME%\\Indexer\\bin\\release\\PublishOutputpublish"'
-		  bat 'rmdir /q /s "C:\\Jenkins\\workspace\\%JOB_NAME%\\Indexer\\bin\\release\\PublishOutputpublish"'
-		  bat 'del /q "C:\\Jenkins\\workspace\\%JOB_NAME%\\ConfigIndexerHost\\bin\\release\\PublishOutputpublish"'
-		  bat 'rmdir /q /s "C:\\Jenkins\\workspace\\%JOB_NAME%\\ConfigIndexerHost\\bin\\release\\PublishOutputpublish"'
-		  bat 'del /q "C:\\Jenkins\\workspace\\%JOB_NAME%\\IndexerUnitTest\\bin\\release\\PublishOutputpublish"'
-		  bat 'rmdir /q /s "C:\\Jenkins\\workspace\\%JOB_NAME%\\IndexerUnitTest\\bin\\release\\PublishOutputpublish"'
 		  script {
 			  makeInstallerWithNsis(indexerInstallerScript)
 		  }
-
-
-
-
-
-
-
 	  }	  
 	}
-	stage('copy-installer-to-x:') {
 	stage('move-installer-to-x:') {
-
 	  steps {
-	    bat '"C:\\Program Files (x86)\\NSIS\\makensis.exe" C:\\Jenkins\\workspace\\%JOB_NAME%\\Installer\\indexerInstallerScript.nsi'
-	    bat 'mkdir "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\"'
-	    bat 'copy "C:\\Jenkins\\workspace\\%JOB_NAME%\\Installer\\Indexer-1.0.0.0-Installer.exe" "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\"'
-	   bat 'exit'
-	  }	  
 		script {
 			mkdirPublishPath(indexerArtifactsFolder[0])
 			xCopyPublishFiles(indexerInstallerPath,indexerArtifactsFolder[0])
@@ -231,9 +157,6 @@ pipeline {
 	}
 	stage('copy-publish-to-x:') {
 	  steps {
-	    bat 'mkdir "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\PublishOutput"'
-	    bat 'xcopy  /y /v /e "C:\\Jenkins\\workspace\\%JOB_NAME%\\Indexer\\bin\\Release\\PublishOutput\\*" "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\PublishOutput"'
-	    bat 'exit'
 		script {
 			mkdirPublishPath(indexerArtifactsFolder[1])
 			xCopyPublishFiles(indexerPublishOutputDir,indexerArtifactsFolder[1])
@@ -243,8 +166,6 @@ pipeline {
 
 	stage('copy-Dockerfile-to-x:') {
 	  steps {
-	    bat 'xcopy /y /v ".\\indexer\\Dockerfile" "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%"'
-
 		script {
 			copyPublishFiles(docker_file_path, indexerArtifactsFolder[0])
 		}
@@ -260,9 +181,6 @@ pipeline {
 	}
 	stage('copy-artifacts-to-last-build') {
 	  steps {
-	    bat 'xcopy /y /v "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\Indexer-1.0.0.0-Installer.exe" "X:\\software\\Microservices\\Indexer\\akabesatest\\last-build"'
-		bat 'xcopy /y /v /e "X:\\software\\Microservices\\Indexer\\akabesatest\\Build-%BUILD_NUMBER%\\PublishOutput\\*" "X:\\software\\Microservices\\Indexer\\akabesatest\\last-build\\PublishOutput"'
-	    bat 'exit'
 		script {
 		  mklinkLastBuild(indexerArtifactsFolder[2],indexerArtifactsFolder[0])
 		  //copyPublishFiles("${indexerArtifactsFolder[0]}\\$installer_name",indexerArtifactsFolder[2])
@@ -270,13 +188,11 @@ pipeline {
 		}
 	  }
 	}
-    stage('generate-code-coverage-report'){
     stage('generate-code-coverage-report-for-unit-tests'){
       steps {
         script {
           cobertura autoUpdateHealth: false, 
           autoUpdateStability: false, 
-          coberturaReportFile: "$cobertura_outfile", 
           coberturaReportFile: "IndexerUnitTest\\cobertura_results.xml", 
           conditionalCoverageTargets: '70, 0, 0', 
           failUnhealthy: false, 
@@ -290,11 +206,6 @@ pipeline {
         }
       }
     }
-
-
-
-
-
     stage('generate-code-coverage-report-for-full-tests'){
       steps {
         script {
@@ -315,21 +226,15 @@ pipeline {
     }
     stage('stash-artifacts') {
       steps {
-        stash includes: "Indexer/bin/release/PublishOutput/**/*", name: publish_artifacts_stash_id
-		stash includes: "Indexer/Dockerfile", name: publish_artifacts_stash_id_2
         stash includes: "Indexer/bin/Release/PublishOutput/**/*", name: publish_artifacts_stash_id
 		stash includes: "Indexer/Dockerfile", name: dockerfile_artifacts_stash_id
       }
     }
-
     stage('clean-test-workspace') {
       steps {
-        node(linux_production_like_node_label) {
-          ws(theworkspace) {
         node(linux_not_within_docker_node_label) {
           ws("%WORKSPACE") {
             script {
-              linux_production_like_node_name = NODE_NAME
               linux_not_within_docker_node_name = NODE_NAME
             }
             step([$class: 'WsCleanup'])
@@ -339,12 +244,9 @@ pipeline {
     } 
     stage('unstash-artifacts') {
       steps {
-        node(linux_production_like_node_name) {
-          ws(theworkspace) {
         node(linux_not_within_docker_node_name) {
           ws("%WORKSPACE") {
             unstash publish_artifacts_stash_id
-			unstash publish_artifacts_stash_id_2
 			unstash dockerfile_artifacts_stash_id
           }
         }
@@ -352,12 +254,9 @@ pipeline {
     }
     stage('docker-build') {
       steps {
-        node(linux_production_like_node_name) {
-          ws(theworkspace) {
         node(linux_not_within_docker_node_name) {
           ws("%WORKSPACE") {
 		    script{
-              newImage = docker.build("tlv-docker.us.int.genesyslab.com:5000/indexertest:${env.BUILD_NUMBER}", "./Indexer/")
               newImage = docker.build("$docker_registry_tag", "./Indexer/")
 			  newImage.push()
 			}
