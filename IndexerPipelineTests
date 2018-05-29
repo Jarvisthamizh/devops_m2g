@@ -3,17 +3,6 @@
 // global reusable definitions
 //
 // --------------------------------------
-def msbuild          	= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" Indexer.sln /m /t:rebuild /p:Configuration=$configuration /p:Platform=\"Any CPU\" /p:ProductVersion=1.0.0.${env.BUILD_NUMBER}" }
-def publish				= { configuration -> bat "\"${tool 'msbuildWinWorker2'}\" Indexer.sln /m /p:OutputPath=bin\\$configuration\\PublishOutput /t:publish /p:Configuration=$configuration /p:Platform=\"Any CPU\"  "}
-def unittestsdir     	= 'projects\\XUnitTestProject1'
-def unittestOutFile  	= 'xunit.out.xml'
-theworkspace                              = "workspace/${env.JOB_NAME}"
-linux_production_like_node_label          = 'linux-production-like-2'
-linux_production_like_node_name           = linux_production_like_node_label
-publish_artifacts_stash_id                = 'publish-artifacts'
-publish_artifacts_stash_id_2			  = 'dockerfile-artifacts'
-
-
 
 // Define build + installer variables
 
@@ -174,7 +163,6 @@ pipeline {
 	stage('verify-last-build-exists'){
 		steps {
 			script {
-				//bat "IF EXIST indexerArtifactsFolder[0]\\last-build (rmdir indexerArtifactsFolder[0]\\last-build)"
 				verifyLastBuildExistsbat(indexerArtifactsFolder[2])
 			}
 		}
@@ -183,8 +171,6 @@ pipeline {
 	  steps {
 		script {
 		  mklinkLastBuild(indexerArtifactsFolder[2],indexerArtifactsFolder[0])
-		  //copyPublishFiles("${indexerArtifactsFolder[0]}\\$installer_name",indexerArtifactsFolder[2])
-		  //xCopyPublishFiles("${indexerArtifactsFolder[1]}\\*","${indexerArtifactsFolder[2]}\\PublishOutput")
 		}
 	  }
 	}
